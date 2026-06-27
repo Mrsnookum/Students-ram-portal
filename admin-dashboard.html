@@ -33,7 +33,7 @@
         .nav-btn.active { background-color: #334155; border-left: 4px solid #D4AF37; }
     </style>
 </head>
-<body class="bg-gray-50 font-sans h-screen flex overflow-hidden">
+<body class="bg-gray-50 font-sans h-[100dvh] flex overflow-hidden">
 
     <div id="drawerOverlay" onclick="toggleDrawer(false)" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"></div>
 
@@ -77,7 +77,7 @@
             </div>
         </header>
 
-        <div id="contentWrapper" class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar bg-gray-50">
+        <div id="contentWrapper" class="flex-1 overflow-y-auto p-4 pb-32 md:p-8 md:pb-8 no-scrollbar bg-gray-50">
             
             <div id="section-overview" class="admin-section space-y-6">
                 <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 flex items-center justify-between">
@@ -209,16 +209,12 @@
                                 </tr>
                             </thead>
                             <tbody id="placements-table-body" class="text-sm divide-y divide-gray-100">
-                                <!-- Populated by JS -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- ========================================== -->
-            <!-- WELFARE SECTION -->
-            <!-- ========================================== -->
             <div id="section-welfare" class="admin-section hidden space-y-6">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
@@ -233,7 +229,6 @@
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Inbox Pane (Left) -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-[450px] md:h-[600px] flex flex-col">
                         <div class="p-4 border-b border-gray-100 bg-gray-50">
                             <h4 class="font-bold text-gray-700 text-sm"><i class="fas fa-inbox mr-2 text-ramRed"></i> Ticket Inbox</h4>
@@ -243,7 +238,6 @@
                         </div>
                     </div>
 
-                    <!-- Case File Pane (Right - Empty State) -->
                     <div class="lg:col-span-2 bg-gray-50 rounded-2xl shadow-inner border border-gray-200 h-[450px] md:h-[600px] flex items-center justify-center text-center p-8" id="welfare-empty-state">
                         <div>
                             <i class="fas fa-user-shield text-6xl text-gray-300 mb-4"></i>
@@ -251,7 +245,6 @@
                         </div>
                     </div>
 
-                    <!-- Case File Pane (Right - Active State) -->
                     <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 h-[450px] md:h-[600px] flex flex-col hidden" id="welfare-case-file">
                         <div class="p-6 border-b border-gray-100 flex justify-between items-start">
                             <div>
@@ -265,7 +258,6 @@
                         </div>
                         
                         <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50">
-                            <!-- Student Message -->
                             <div>
                                 <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2">Subject: <span id="wf-subject" class="text-gray-700">Subject Here</span></h4>
                                 <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm text-sm text-gray-700 whitespace-pre-wrap" id="wf-message">
@@ -273,7 +265,6 @@
                                 </div>
                             </div>
 
-                            <!-- Officer Notes (Confidential) -->
                             <form id="welfareUpdateForm" onsubmit="updateWelfareTicket(event)" class="space-y-4">
                                 <input type="hidden" id="wf-ticket-id">
                                 <div>
@@ -469,7 +460,6 @@
         </div>
     </div>
     
-    <!-- Announcement Broadcast Modal -->
     <div id="announcementModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
         <div class="absolute inset-0 bg-adminDark/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="announcementBackdrop"></div>
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 transform scale-90 opacity-0 transition-all duration-300" id="announcementBox">
@@ -508,7 +498,6 @@
         </div>
     </div>
 
-    <!-- Clinical Placement Modal -->
     <div id="placementModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
         <div class="absolute inset-0 bg-adminDark/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="placementBackdrop"></div>
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 transform scale-90 opacity-0 transition-all duration-300" id="placementBox">
