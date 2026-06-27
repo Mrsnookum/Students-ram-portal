@@ -463,7 +463,7 @@ async function hodSubmitLecturer(event) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Deploying via External Server...';
 
     // Replace this URL with your actual deployed backend URL (e.g., Render, Railway, or VPS)
-    const EXTERNAL_BACKEND_URL = 'http://127.0.0.1:8000/api/create-staff';
+    const EXTERNAL_BACKEND_URL = 'https://ram-portal-backend.onrender.com/api/create-staff';
 
     try {
         const response = await fetch(EXTERNAL_BACKEND_URL, {
