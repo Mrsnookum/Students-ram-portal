@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ram Training College | Official Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ramBlue: '#003366', 
+                        ramRed: '#DC2626',
+                        ramGold: '#D4AF37',
+                    },
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Toast Animation */
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-enter { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* Modal Fade Animation */
+        .modal-fade { transition: opacity 0.3s ease-in-out; }
+        
+        /* Smooth Scrolling */
+        html { scroll-behavior: smooth; }
+
+        /* Side Menu Transition */
+        #sideMenu {
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(100%);
+        }
+        #sideMenu.open {
+            transform: translateX(0);
+        }
+    /* ... your existing styles ... */
+
+    /* Prevents dropdowns from expanding beyond the screen height */
+    select {
+        max-height: 200px; /* Limits the height */
+        overflow-y: auto;
+    }
+
+    /* Custom thin scrollbar for a modern look on mobile */
+    .no-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+    .no-scrollbar::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1; /* soft gray */
+        border-radius: 10px;
+    }
+
+    /* Target the specific long select lists */
+    #appMeanGrade, #appCourse, .appSubjGrade {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.5rem center;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+    }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800 min-h-screen flex flex-col relative overflow-x-hidden">
+
+    <div id="toastContainer" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] hidden w-[90%] max-w-md">
+        <div id="toastMessage" class="bg-white px-6 py-4 rounded-xl shadow-2xl border-l-4 font-semibold text-sm flex items-center justify-between">
+            <div class="flex items-center">
+                <i id="toastIcon" class="fas mr-3 text-lg"></i>
+                <span id="toastText" class="text-gray-800">Message goes here</span>
+            </div>
+            <button onclick="hideToast()" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <nav class="bg-white shadow-md sticky top-0 z-40 px-4 md:px-8 py-3 flex justify-between items-center">
+        <div class="flex items-center">
+            <img src="logoram.jpg" alt="RAM Logo" class="h-10 md:h-12 mr-3">
+        </div>
+        
+        <div class="hidden md:flex space-x-8 items-center font-semibold text-sm text-ramBlue">
+            <a href="#about" class="hover:text-ramRed transition">About Us</a>
+            <a href="#courses" class="hover:text-ramRed transition">Courses</a>
+            <a href="#gallery" class="hover:text-ramRed transition">Gallery</a>
+            <a href="#contact" class="hover:text-ramRed transition">Contact</a>
+            <a href="login.html" class="bg-ramBlue text-white px-6 py-2 rounded-full hover:bg-blue-800 transition shadow-md flex items-center">
+                <i class="fas fa-lock mr-2"></i> Login
+            </a>
+        </div>
+
+        <button onclick="toggleMenu(true)" class="md:hidden text-ramBlue text-2xl p-2">
+            <i class="fas fa-bars"></i>
+        </button>
+    </nav>
+
+    <div id="menuOverlay" onclick="toggleMenu(false)" class="fixed inset-0 bg-black/50 z-[45] hidden transition-opacity"></div>
+    <div id="sideMenu" class="fixed top-0 right-0 h-full w-3/4 bg-white z-[50] shadow-2xl flex flex-col p-6 md:hidden">
+        <div class="flex justify-between items-center mb-10">
+            <img src="https://ramtrainingcollege.co.ke/pluginfile.php/1/theme_moove/logo/1732599600/ram%20logo.png" alt="Logo" class="h-8">
+            <button onclick="toggleMenu(false)" class="text-ramBlue text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="flex flex-col space-y-6 font-bold text-lg text-ramBlue">
+            <a href="#about" onclick="toggleMenu(false)" class="hover:text-ramRed">About Us</a>
+            <a href="#courses" onclick="toggleMenu(false)" class="hover:text-ramRed">Courses</a>
+            <a href="#gallery" onclick="toggleMenu(false)" class="hover:text-ramRed">Gallery</a>
+            <a href="#contact" onclick="toggleMenu(false)" class="hover:text-ramRed">Contact</a>
+            <hr class="border-gray-100">
+            <a href="login.html" class="bg-ramBlue text-white text-center py-3 rounded-xl shadow-lg flex items-center justify-center">
+                <i class="fas fa-lock mr-2 text-sm"></i> Login to Portal
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-gray-900 text-gray-200 text-xs md:text-sm py-2 px-4 overflow-hidden flex items-center whitespace-nowrap">
+        <span class="bg-ramGold text-ramBlue font-bold px-2 py-1 rounded mr-3 text-[10px] uppercase tracking-wider">Latest</span>
+        <marquee behavior="scroll" direction="left" scrollamount="5" class="w-full">
+            September Intake is currently ongoing! Apply today. &nbsp;&nbsp;|&nbsp;&nbsp; Nursing Council Exams scheduled for Dec 15th. &nbsp;&nbsp;|&nbsp;&nbsp; Clinical Rotation Logbooks due by end of month.
+        </marquee>
+    </div>
+
+    <div class="relative w-full h-[45vh] md:h-[50vh] flex items-center justify-center text-center">
+    <img src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=2068&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover">
+    <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm mix-blend-multiply"></div>
+    <div class="relative z-10 px-4 mt-8 md:mt-0">
+        <h1 class="text-2xl md:text-5xl lg:text-6xl font-bold text-white mb-4 tracking-tight px-2">
+            Shaping the Future of <br class="md:hidden"> Healthcare Excellence
+        </h1>
+        <p class="text-xs md:text-lg text-gray-300 max-w-2xl mx-auto px-4 leading-relaxed">
+            Welcome to the RAM Training College Digital Hub. Access your academic records, 
+            manage your clinical rotations, and empower your journey toward professional nursing.
+        </p>
+    </div>
+</div>
+
+    <div class="flex-1 max-w-6xl w-full mx-auto px-4 -mt-16 md:-mt-24 relative z-20 pb-16">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <a href="login.html" class="bg-white rounded-2xl p-8 shadow-xl border-t-4 border-ramBlue cursor-pointer transform hover:-translate-y-2 hover:shadow-2xl transition duration-300 group relative overflow-hidden">
+                <span class="absolute top-0 right-0 bg-ramBlue text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">MOST USED</span>
+                <div class="w-16 h-16 bg-blue-50 text-ramBlue rounded-full flex items-center justify-center text-2xl mx-auto mb-6 group-hover:bg-ramBlue group-hover:text-white transition">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <h3 class="text-xl font-bold text-center text-gray-800 mb-3">Student Portal</h3>
+                <p class="text-sm text-gray-500 text-center mb-6">Access exam results, fee structures, and clinical rotations.</p>
+                <div class="text-center font-bold text-ramBlue group-hover:text-blue-800">Login Now <i class="fas fa-arrow-right ml-1"></i></div>
+            </a>
+
+            <div onclick="openApplyModal()" class="bg-white rounded-2xl p-8 shadow-xl border-t-4 border-ramRed cursor-pointer transform hover:-translate-y-2 hover:shadow-2xl transition duration-300 group relative overflow-hidden">
+                <span class="absolute top-0 right-0 bg-ramRed text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg tracking-wider">NEW</span>
+                <div class="w-16 h-16 bg-red-50 text-ramRed rounded-full flex items-center justify-center text-2xl mx-auto mb-6 group-hover:bg-ramRed group-hover:text-white transition">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <h3 class="text-xl font-bold text-center text-gray-800 mb-3">Online Admission</h3>
+                <p class="text-sm text-gray-500 text-center mb-6">New applicant? Apply for Diploma in Nursing or Community Health.</p>
+                <div class="text-center font-bold text-ramRed group-hover:text-red-800">Apply Here <i class="fas fa-arrow-right ml-1"></i></div>
+            </div>
+
+            <a href="#" class="bg-white rounded-2xl p-8 shadow-xl border-t-4 border-ramGold cursor-pointer transform hover:-translate-y-2 hover:shadow-2xl transition duration-300 group">
+                <div class="w-16 h-16 bg-yellow-50 text-ramGold rounded-full flex items-center justify-center text-2xl mx-auto mb-6 group-hover:bg-ramGold group-hover:text-white transition">
+                    <i class="fas fa-laptop-medical"></i>
+                </div>
+                <h3 class="text-xl font-bold text-center text-gray-800 mb-3">E-Learning (LMS)</h3>
+                <p class="text-sm text-gray-500 text-center mb-6">Access class notes, assignments, and online nursing quizzes.</p>
+                <div class="text-center font-bold text-ramGold group-hover:text-yellow-600">Go to Class <i class="fas fa-arrow-right ml-1"></i></div>
+            </a>
+
+        </div>
+    </div>
+
+    <section id="about" class="max-w-6xl mx-auto px-4 py-16">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold text-ramBlue mb-4">About RAM Training College</h2>
+            <div class="w-16 h-1 bg-ramGold mx-auto rounded-full"></div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800">Empowering the Next Generation of Healthcare Professionals</h3>
+                <p class="text-gray-600 mb-6 leading-relaxed">Located in Kisii, RAM Training College is a premier institution dedicated to producing competent, disciplined, and highly skilled professionals. We specialize in rigorous healthcare training with a strong emphasis on practical clinical experience and uncompromising academic excellence.</p>
+                <div class="space-y-5">
+                    <div class="flex items-start">
+                        <div class="bg-blue-50 text-ramBlue p-3 rounded-xl mr-4"><i class="fas fa-bullseye text-xl"></i></div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">Our Mission</h4>
+                            <p class="text-sm text-gray-600 mt-1">To provide quality service and uphold high intellectual values in all our training programs.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="bg-red-50 text-ramRed p-3 rounded-xl mr-4"><i class="fas fa-eye text-xl"></i></div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">Our Vision</h4>
+                            <p class="text-sm text-gray-600 mt-1">To be a leading center of excellence in healthcare training, research, and community development.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="relative">
+                <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80" class="rounded-2xl shadow-xl w-full object-cover h-96" alt="Nursing Students">
+                <div class="absolute -bottom-6 -left-6 bg-white p-5 rounded-2xl shadow-xl border-t-4 border-ramGold hidden md:block">
+                    <p class="font-bold text-ramBlue text-2xl">Excellence</p>
+                    <p class="text-sm text-gray-500">NCK Approved Institution</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="courses" class="bg-white py-16">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-ramBlue mb-4">Academic Programs</h2>
+                <div class="w-16 h-1 bg-ramRed mx-auto rounded-full"></div>
+                <p class="mt-4 text-gray-600">Discover our Nursing Council of Kenya (NCK) & KNEC approved programs.</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8">
+                
+                <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:shadow-xl transition group">
+                    <div class="w-14 h-14 bg-ramBlue text-white rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition"><i class="fas fa-user-nurse"></i></div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Diploma in KRCHN</h3>
+                    <p class="text-sm text-gray-600 mb-6 h-16">Kenya Registered Community Health Nursing. A comprehensive program combining clinical care and community practice.</p>
+                    <button onclick="openApplyModal()" class="text-ramBlue font-bold text-sm hover:text-blue-800 flex items-center">Apply Now <i class="fas fa-arrow-right ml-2"></i></button>
+                </div>
+                
+                <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:shadow-xl transition group">
+                    <div class="w-14 h-14 bg-ramRed text-white rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition"><i class="fas fa-notes-medical"></i></div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Cert. in Community Health</h3>
+                    <p class="text-sm text-gray-600 mb-6 h-16">Equips students with foundational skills to provide essential, preventative healthcare services at the community level.</p>
+                    <button onclick="openApplyModal()" class="text-ramRed font-bold text-sm hover:text-red-800 flex items-center">Apply Now <i class="fas fa-arrow-right ml-2"></i></button>
+                </div>
+                
+                <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:shadow-xl transition group">
+                    <div class="w-14 h-14 bg-ramGold text-white rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition"><i class="fas fa-hands-helping"></i></div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Social Work & Comm. Dev.</h3>
+                    <p class="text-sm text-gray-600 mb-6 h-16">KNEC examined diploma focusing on social welfare, psychology, community empowerment, and project management.</p>
+                    <button onclick="openApplyModal()" class="text-ramGold font-bold text-sm hover:text-yellow-600 flex items-center">Apply Now <i class="fas fa-arrow-right ml-2"></i></button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="gallery" class="py-16 max-w-6xl mx-auto px-4">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold text-ramBlue mb-4">Campus Gallery</h2>
+            <div class="w-16 h-1 bg-ramGold mx-auto rounded-full"></div>
+        </div>
+        
+        <div id="galleryContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="col-span-full text-center text-gray-400 py-8">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading campus moments...</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="bg-gray-900 text-white py-16">
+        <div class="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
+            <div>
+                <h2 class="text-3xl font-bold mb-4">Get in Touch</h2>
+                <div class="w-16 h-1 bg-ramRed mb-8 rounded-full"></div>
+                <p class="text-gray-400 mb-8 text-sm md:text-base leading-relaxed">Have questions about our intakes, fee structures, or clinical programs? Reach out to our administration office. We are always happy to help prospective students.</p>
+                <div class="space-y-6">
+                    <div class="flex items-center"><i class="fas fa-map-marker-alt w-10 text-ramGold text-2xl"></i> <span class="font-semibold text-gray-200">Kisii Campus, Kenya</span></div>
+                    <div class="flex items-center"><i class="fas fa-phone w-10 text-ramGold text-2xl"></i> <span class="font-semibold text-gray-200">+254 721 332 105</span></div>
+                    <div class="flex items-center"><i class="fas fa-envelope w-10 text-ramGold text-2xl"></i> <span class="font-semibold text-gray-200">info.ramcollege@gmail.com</span></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 md:p-8 text-gray-800 shadow-2xl">
+                <h3 class="text-2xl font-bold text-ramBlue mb-6">Send an Inquiry</h3>
+                <form id="contactForm" class="space-y-4">
+                    <input type="text" id="contactName" placeholder="Your Full Name" class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-ramBlue focus:ring-2 focus:ring-ramBlue/20 outline-none transition text-sm" required>
+                    <input type="email" id="contactEmail" placeholder="Your Email Address" class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-ramBlue focus:ring-2 focus:ring-ramBlue/20 outline-none transition text-sm" required>
+                    <textarea id="contactMessage" placeholder="How can we help you?" rows="4" class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-ramBlue focus:ring-2 focus:ring-ramBlue/20 outline-none transition text-sm resize-none" required></textarea>
+                    <button type="submit" class="w-full bg-ramBlue text-white font-bold py-3.5 rounded-xl shadow hover:bg-blue-800 transition transform active:scale-95">Send Message</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-ramBlue text-white py-6 text-center text-xs md:text-sm mt-auto border-t border-blue-900">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
+            <p>&copy; 2026 Ram Training College. All Rights Reserved.</p>
+            <div class="flex space-x-6 mt-4 md:mt-0 text-lg">
+                <a href="#" class="hover:text-ramGold transition"><i class="fab fa-facebook"></i></a>
+                <a href="#" class="hover:text-ramGold transition"><i class="fab fa-twitter"></i></a>
+                <a href="#" class="hover:text-ramGold transition"><i class="fab fa-instagram"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <div id="applyModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-start justify-center px-4 modal-fade py-10">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all my-auto">
+            <div class="bg-ramRed px-6 py-5 flex justify-between items-center text-white">
+                <div>
+                    <h3 class="font-bold text-lg">Online Admission Form</h3>
+                    <p class="text-xs text-red-100 mt-1">Provide your KCSE details & desired course</p>
+                </div>
+                <button onclick="closeApplyModal()" class="text-white hover:text-gray-200 transition bg-red-800/50 hover:bg-red-800 w-8 h-8 rounded-full flex items-center justify-center">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto max-h-[75vh] no-scrollbar">
+                <form id="applicationForm" onsubmit="submitApplication(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">First Name</label>
+                            <input type="text" id="appFirstName" class="w-full px-4 py-2.5 bg-gray-50 rounded-xl border focus:border-ramRed outline-none transition-all text-sm" required>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Last Name</label>
+                            <input type="text" id="appLastName" class="w-full px-4 py-2.5 bg-gray-50 rounded-xl border focus:border-ramRed outline-none transition-all text-sm" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Email</label>
+                            <input type="email" id="appEmail" class="w-full px-4 py-2.5 bg-gray-50 rounded-xl border focus:border-ramRed outline-none transition-all text-sm" required>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Phone</label>
+                            <input type="tel" id="appPhone" class="w-full px-4 py-2.5 bg-gray-50 rounded-xl border focus:border-ramRed outline-none transition-all text-sm" required>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-100">
+                        <h4 class="text-ramBlue font-bold text-sm uppercase tracking-wider mb-4">Academic Qualifications (KCSE)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Index Number</label>
+                                <input type="text" id="appIndex" placeholder="e.g. 12345678901" class="w-full px-4 py-2.5 bg-gray-50 rounded-xl border focus:border-ramRed outline-none text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Mean Grade</label>
+                                <select id="appMeanGrade" class="w-full px-4 py-2.5 bg-gray-50 rounded-xl border focus:border-ramRed outline-none text-sm" required>
+                                    <option value="">Select Grade</option>
+                                    <option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option>
+                                    <option>D-</option><option>E</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2">Subject Grades scored (Min 7, Max 8)</label>
+                        <div id="subjectsContainer" class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div class="space-y-1">
+                                <input type="text" placeholder="Subject" class="appSubjName w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none">
+                                <select class="appSubjGrade w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none">
+                                    <option value="">Grade</option>
+                                    <option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option>
+                                    <option>D-</option><option>E</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1"><input type="text" placeholder="Subject" class="appSubjName w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><select class="appSubjGrade w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><option value="">Grade</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option></select></div>
+                            <div class="space-y-1"><input type="text" placeholder="Subject" class="appSubjName w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><select class="appSubjGrade w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><option value="">Grade</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option></select></div>
+                            <div class="space-y-1"><input type="text" placeholder="Subject" class="appSubjName w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><select class="appSubjGrade w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><option value="">Grade</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option></select></div>
+                            <div class="space-y-1"><input type="text" placeholder="Subject" class="appSubjName w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><select class="appSubjGrade w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><option value="">Grade</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option></select></div>
+                            <div class="space-y-1"><input type="text" placeholder="Subject" class="appSubjName w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><select class="appSubjGrade w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><option value="">Grade</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option></select></div>
+                            <div class="space-y-1"><input type="text" placeholder="Subject" class="appSubjName w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><select class="appSubjGrade w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><option value="">Grade</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option></select></div>
+                            <div class="space-y-1"><input type="text" placeholder="Subject" class="appSubjName w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><select class="appSubjGrade w-full px-3 py-2 bg-white rounded-lg border text-xs outline-none"><option value="">Grade</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option></select></div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-100">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Applying For</label>
+                        <select id="appCourse" class="w-full px-4 py-3 bg-gray-50 rounded-xl border focus:border-ramRed outline-none text-sm font-semibold" required>
+                            <option value="">Select a Course</option>
+                            <option>Diploma in KRCHN (Nursing)</option>
+                            <option>Certificate in Community Health Nursing</option>
+                            <option>Diploma in Social Work & Comm. Development</option>
+                            <option>Other / Short Course</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" id="applyBtn" class="w-full bg-ramRed text-white font-bold py-4 rounded-xl shadow-lg hover:bg-red-700 hover:shadow-xl transition-all transform active:scale-[0.98]">
+                        Submit Admission Application
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleMenu(isOpen) {
+            const sideMenu = document.getElementById('sideMenu');
+            const overlay = document.getElementById('menuOverlay');
+            if (isOpen) {
+                sideMenu.classList.add('open');
+                overlay.classList.remove('hidden');
+            } else {
+                sideMenu.classList.remove('open');
+                overlay.classList.add('hidden');
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="index.js"></script>
+</body>
+</html>

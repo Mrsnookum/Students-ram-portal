@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control Center | Ram Training College</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ramBlue: '#003366', 
+                        ramRed: '#DC2626',
+                        ramGreen: '#059669', 
+                        ramGold: '#D4AF37',
+                        adminDark: '#0f172a', /* Deep slate for admin sidebar */
+                        adminAccent: '#334155'
+                    },
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        #mobileDrawer { transition: transform 0.3s ease-in-out; }
+        .drawer-open { transform: translateX(0) !important; }
+        .nav-btn.active { background-color: #334155; border-left: 4px solid #D4AF37; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans h-screen flex overflow-hidden">
+
+    <div id="drawerOverlay" onclick="toggleDrawer(false)" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"></div>
+
+    <aside id="mobileDrawer" class="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-adminDark text-white transform -translate-x-full md:translate-x-0 md:static md:w-64 flex flex-col shadow-2xl z-50 transition-transform">
+        <div class="h-20 flex items-center px-6 border-b border-gray-800">
+            <div class="w-8 h-8 bg-white rounded flex items-center justify-center mr-3">
+                <i class="fas fa-shield-alt text-adminDark"></i>
+            </div>
+            <div>
+                <span class="block font-bold text-lg tracking-wide">Staff Portal</span>
+                <span id="ui-role-badge" class="block text-[10px] text-ramGold uppercase tracking-widest font-black">Loading Role...</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 mt-6 py-2 space-y-1 overflow-y-auto no-scrollbar" id="admin-nav-menu">
+            </nav>
+
+        <div class="p-4 border-t border-gray-800 bg-gray-900/50">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-full bg-adminAccent flex items-center justify-center border-2 border-gray-600">
+                    <i class="fas fa-user text-gray-300"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p id="ui-admin-name" class="text-sm font-bold truncate">Loading...</p>
+                    <p id="ui-admin-dept" class="text-[10px] text-gray-400 truncate uppercase tracking-wider">...</p>
+                </div>
+                <button onclick="logoutAdmin()" class="ml-auto text-gray-400 hover:text-white transition"><i class="fas fa-power-off"></i></button>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <header class="h-20 bg-white shadow-sm flex items-center justify-between px-4 md:px-8 z-10 shrink-0 border-b border-gray-200">
+            <div class="flex items-center">
+                <button onclick="toggleDrawer(true)" class="md:hidden text-adminDark p-2 mr-2"><i class="fas fa-bars text-xl"></i></button>
+                <h2 id="page-title" class="text-xl font-bold text-gray-800 tracking-tight">Dashboard Overview</h2>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">System Online</span>
+            </div>
+        </header>
+
+        <div id="contentWrapper" class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar bg-gray-50">
+            
+            <div id="section-overview" class="admin-section space-y-6">
+                <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Welcome, <span id="welcome-name">Staff</span></h1>
+                        <p class="text-sm text-gray-500 mt-1">Select a module from the sidebar to begin.</p>
+                    </div>
+                    <i class="fas fa-building text-5xl text-gray-100"></i>
+                </div>
+                
+                <div id="overview-metrics-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    </div>
+
+                <div class="mt-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                    <h3 class="font-bold text-gray-800 mb-4"><i class="fas fa-bolt mr-2 text-ramGold"></i> Live Dashboard Activity</h3>
+                    <div id="activity-feed" class="space-y-3">
+                        <p class="text-sm text-gray-400 italic">Loading activity stream...</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="section-staff" class="admin-section hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-800">Staff Management</h3>
+                    <button onclick="openStaffModal()" class="bg-adminDark text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-slate-800"><i class="fas fa-plus mr-2"></i> Add Staff</button>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-4">Name</th>
+                                    <th class="px-6 py-4">Department</th>
+                                    <th class="px-6 py-4">Role</th>
+                                    <th class="px-6 py-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staff-table-body" class="text-sm divide-y divide-gray-100">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-academics" class="admin-section hidden space-y-6">
+                
+                <div id="lecturer-view" class="hidden space-y-6">
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                        <h3 class="font-bold text-gray-800 mb-4"><i class="fas fa-book-open mr-2 text-ramBlue"></i> Register Your Teaching Units</h3>
+                        <form id="addUnitForm" onsubmit="claimUnit(event)" class="flex flex-col md:flex-row gap-4">
+                            <select id="lec-block" class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold flex-1" required>
+                                <option value="">Select Block</option>
+                                <option>Introductory</option>
+                                <option>Block 1</option><option>Block 2</option>
+                                <option>Block 3</option><option>Block 4</option><option>Block 5</option>
+                            </select>
+                            <input type="text" id="lec-unit" placeholder="Unit Name (e.g. Anatomy)" class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm flex-1" required>
+                            <button type="submit" id="btn-claim-unit" class="bg-ramBlue text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-blue-800 transition">Add Unit</button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                        <h3 class="font-bold text-gray-800 mb-4">My Assigned Units</h3>
+                        <div id="my-units-list" class="space-y-3">
+                            <p class="text-sm text-gray-400 italic">Fetching your units...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="hod-view" class="hidden space-y-8">
+                    
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-gray-800"><i class="fas fa-chalkboard-teacher mr-2 text-ramBlue"></i> Department Lecturers</h3>
+                            <button onclick="openHodLecturerModal()" class="bg-adminDark text-white px-4 py-2 rounded-lg text-xs font-bold shadow hover:bg-slate-800 transition"><i class="fas fa-plus mr-2"></i> Add Lecturer</button>
+                        </div>
+                        <div id="hod-lecturer-list" class="space-y-3">
+                            <p class="text-sm text-gray-400 italic">Fetching department staff...</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                        <h3 class="font-bold text-gray-800 mb-6"><i class="fas fa-check-double mr-2 text-ramGold"></i> Pending Results Approval</h3>
+                        <div id="hod-approvals-list" class="space-y-3">
+                            <div class="text-center py-8">
+                                <i class="fas fa-file-signature text-4xl text-gray-200 mb-3"></i>
+                                <p class="text-sm text-gray-400 italic">No results pending approval at this time.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                        <h3 class="font-bold text-gray-800 mb-6"><i class="fas fa-history mr-2 text-ramBlue"></i> Approval & Rejection Log</h3>
+                        <div id="hod-history-list" class="space-y-3">
+                            <p class="text-sm text-gray-400 italic">Loading history...</p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div id="section-placements" class="admin-section hidden space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">Clinical Placements</h3>
+                        <p class="text-xs text-gray-500 mt-1">Assign and manage hospital rotations.</p>
+                    </div>
+                    <select id="placement-block-filter" onchange="fetchPlacementStudents()" class="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-ramBlue">
+                        <option value="Introductory">Introductory Block</option>
+                        <option value="Block 1">Block 1</option>
+                        <option value="Block 2">Block 2</option>
+                        <option value="Block 3">Block 3</option>
+                        <option value="Block 4">Block 4</option>
+                        <option value="Block 5">Block 5</option>
+                    </select>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-4">Student</th>
+                                    <th class="px-6 py-4">Assigned Hospital</th>
+                                    <th class="px-6 py-4">Duration</th>
+                                    <th class="px-6 py-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="placements-table-body" class="text-sm divide-y divide-gray-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- WELFARE SECTION -->
+            <!-- ========================================== -->
+            <div id="section-welfare" class="admin-section hidden space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">Student Welfare Desk</h3>
+                        <p class="text-xs text-gray-500 mt-1">Manage confidential student support tickets.</p>
+                    </div>
+                    <select id="welfare-status-filter" onchange="fetchWelfareTickets()" class="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-ramRed">
+                        <option value="Open">Open Tickets</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Inbox Pane (Left) -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-[600px] flex flex-col">
+                        <div class="p-4 border-b border-gray-100 bg-gray-50">
+                            <h4 class="font-bold text-gray-700 text-sm"><i class="fas fa-inbox mr-2 text-ramRed"></i> Ticket Inbox</h4>
+                        </div>
+                        <div id="welfare-ticket-list" class="flex-1 overflow-y-auto p-3 space-y-3">
+                            <p class="text-xs text-gray-400 italic text-center py-4">Loading tickets...</p>
+                        </div>
+                    </div>
+
+                    <!-- Case File Pane (Right - Empty State) -->
+                    <div class="lg:col-span-2 bg-gray-50 rounded-2xl shadow-inner border border-gray-200 h-[600px] flex items-center justify-center text-center p-8" id="welfare-empty-state">
+                        <div>
+                            <i class="fas fa-user-shield text-6xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500 font-medium">Select a ticket from the inbox to view details.</p>
+                        </div>
+                    </div>
+
+                    <!-- Case File Pane (Right - Active State) -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 h-[600px] flex flex-col hidden" id="welfare-case-file">
+                        <div class="p-6 border-b border-gray-100 flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center gap-3 mb-1">
+                                    <h2 id="wf-student-name" class="text-xl font-black text-gray-800">Student Name</h2>
+                                    <span id="wf-priority-badge" class="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Priority</span>
+                                </div>
+                                <p class="text-xs text-gray-500 font-mono" id="wf-adm-number">Admission Number</p>
+                            </div>
+                            <span id="wf-category-badge" class="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold border border-gray-200">Category</span>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50">
+                            <!-- Student Message -->
+                            <div>
+                                <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2">Subject: <span id="wf-subject" class="text-gray-700">Subject Here</span></h4>
+                                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm text-sm text-gray-700 whitespace-pre-wrap" id="wf-message">
+                                    Student message will appear here.
+                                </div>
+                            </div>
+
+                            <!-- Officer Notes (Confidential) -->
+                            <form id="welfareUpdateForm" onsubmit="updateWelfareTicket(event)" class="space-y-4">
+                                <input type="hidden" id="wf-ticket-id">
+                                <div>
+                                    <label class="block text-[10px] font-black text-ramRed uppercase tracking-wider mb-2"><i class="fas fa-lock mr-1"></i> Confidential Officer Notes</label>
+                                    <textarea id="wf-notes" rows="4" placeholder="Enter private case notes here... (Hidden from student)" class="w-full px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramRed"></textarea>
+                                </div>
+                                
+                                <div class="flex items-center gap-4">
+                                    <div class="flex-1">
+                                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Update Case Status</label>
+                                        <select id="wf-status" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-ramRed">
+                                            <option value="Open">Open</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Resolved">Resolved</option>
+                                        </select>
+                                    </div>
+                                    <div class="pt-5">
+                                        <button type="submit" id="btn-save-welfare" class="bg-adminDark text-white px-6 py-3 rounded-xl text-sm font-bold shadow-md hover:bg-slate-800 transition">
+                                            <i class="fas fa-save mr-2"></i> Save Case
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-announcements" class="admin-section hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-800">Global Announcements</h3>
+                    <button onclick="openAnnouncementModal()" class="bg-ramBlue text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-800 transition"><i class="fas fa-bullhorn mr-2"></i> New Post</button>
+                </div>
+                
+                <div id="announcements-feed" class="space-y-4">
+                    <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 text-center">
+                        <p class="text-gray-500 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i> Loading announcements...</p>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div id="section-settings" class="admin-section hidden space-y-6">
+                <div class="max-w-md mx-auto bg-white rounded-2xl p-8 shadow-sm border border-gray-200 mt-10">
+                    <div class="text-center mb-6">
+                        <i class="fas fa-lock text-3xl text-adminDark mb-2"></i>
+                        <h3 class="text-xl font-bold text-gray-800">Account Security</h3>
+                        <p class="text-xs text-gray-500 mt-1">Update your portal password.</p>
+                    </div>
+                    <form id="settingsForm" onsubmit="updatePassword(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">New Password</label>
+                            <input type="password" id="new-password" placeholder="Min 6 characters" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required minlength="6">
+                        </div>
+                        <button type="submit" id="btn-update-pwd" class="w-full bg-adminDark text-white font-bold py-4 rounded-xl shadow hover:bg-slate-800 transition">Update Password</button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="addStaffModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-adminDark/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="staffModalBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 transform scale-90 opacity-0 transition-all duration-300" id="staffModalBox">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Register New Staff</h3>
+                <button onclick="closeStaffModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <form id="addStaffForm" onsubmit="submitNewStaff(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Supabase User UID</label>
+                    <input type="text" id="staff-uid" placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                    <p class="text-[9px] text-gray-400 mt-1">Generate this in the Supabase Authentication dashboard first.</p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Full Name</label>
+                        <input type="text" id="staff-name" placeholder="Dr. Jane Doe" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Work Email</label>
+                        <input type="email" id="staff-email" placeholder="jane@ram.ac.ke" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Department</label>
+                        <select id="staff-dept" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                            <option value="">Select Dept</option>
+                            <option value="Academics">Academics</option>
+                            <option value="Welfare">Welfare</option>
+                            <option value="Placement">Clinical Placement</option>
+                            <option value="Executive">Executive</option>
+                            <option value="IT">IT Support</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Role Level</label>
+                        <select id="staff-role" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                            <option value="">Select Role</option>
+                            <option value="Lecturer">Lecturer</option>
+                            <option value="HOD">HOD</option>
+                            <option value="Welfare">Welfare Officer</option>
+                            <option value="Placement">Placement Officer</option>
+                            <option value="Principal">Principal / Deputy</option>
+                            <option value="SuperAdmin">SuperAdmin</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-save-staff" class="w-full bg-adminDark text-white font-bold py-4 mt-2 rounded-xl shadow-lg hover:bg-slate-800 transition transform active:scale-95">Save Staff Member</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="hodLecturerModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-adminDark/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="hodLecBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 transform scale-90 opacity-0 transition-all duration-300" id="hodLecBox">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Create Lecturer Account</h3>
+                <button onclick="closeHodLecturerModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="hodLecturerForm" onsubmit="hodSubmitLecturer(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Full Name</label>
+                    <input type="text" id="hod-lec-name" placeholder="e.g. Dr. Jane Doe" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Work Email</label>
+                    <input type="email" id="hod-lec-email" placeholder="jane.doe@ram.ac.ke" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Temporary Password</label>
+                    <input type="text" id="hod-lec-pwd" placeholder="Min 6 characters" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required minlength="6">
+                    <p class="text-[9px] text-gray-400 mt-1">Provide this to the lecturer. They will change it upon logging in.</p>
+                </div>
+                <button type="submit" id="btn-hod-save-lec" class="w-full bg-adminDark text-white font-bold py-4 mt-2 rounded-xl shadow-lg hover:bg-slate-800 transition transform active:scale-95">Generate Secure Account</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="gradebookModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-adminDark/80 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="gradebookBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col transform scale-90 opacity-0 transition-all duration-300" id="gradebookBox">
+            
+            <div class="flex justify-between items-center p-6 border-b border-gray-100 shrink-0 flex-wrap gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800" id="gb-unit-title">Unit Name</h3>
+                    <p class="text-xs font-bold text-ramGold uppercase tracking-wider mt-1" id="gb-block-title">Block X</p>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <input type="text" id="supp-adm-input" placeholder="Add Adm No. (e.g. 894/24)" class="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue w-56 placeholder-gray-400">
+                    <button onclick="addSupplementaryStudent()" class="bg-blue-50 text-ramBlue px-4 py-2 rounded-xl font-bold text-xs hover:bg-blue-100 transition border border-blue-100 shadow-sm">
+                        <i class="fas fa-plus mr-1"></i> Add Retake
+                    </button>
+                    <button onclick="closeGradebookModal()" class="text-gray-400 hover:text-red-500 transition ml-2 bg-gray-50 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 px-6 py-3 flex gap-4 text-xs font-medium text-blue-800 shrink-0 border-b border-blue-100">
+                <span class="flex items-center"><i class="fas fa-info-circle mr-2"></i> Pass: 60-69</span>
+                <span class="flex items-center"><i class="fas fa-medal mr-2"></i> Credit: 70-79</span>
+                <span class="flex items-center"><i class="fas fa-trophy mr-2"></i> Distinction: 80-100</span>
+            </div>
+
+            <div class="p-6 flex-1 overflow-y-auto no-scrollbar">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 text-[10px] font-black text-gray-500 uppercase tracking-widest sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-4 py-3 rounded-tl-lg">Student</th>
+                            <th class="px-4 py-3 w-24">CAT</th>
+                            <th class="px-4 py-3 w-24">Exam</th>
+                            <th class="px-4 py-3 w-24 text-center">Total</th>
+                            <th class="px-4 py-3 rounded-tr-lg">Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gradebook-tbody" class="text-sm divide-y divide-gray-50">
+                        </tbody>
+                </table>
+            </div>
+
+            <div class="p-6 border-t border-gray-100 bg-gray-50 rounded-b-3xl flex justify-between items-center shrink-0">
+                <p class="text-xs text-gray-500"><i class="fas fa-lock mr-1"></i> Results will be sent to HOD for approval.</p>
+                <button onclick="submitGrades()" id="btn-submit-grades" class="bg-ramGreen text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 transition transform active:scale-95">
+                    Submit to HOD
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Announcement Broadcast Modal -->
+    <div id="announcementModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-adminDark/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="announcementBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 transform scale-90 opacity-0 transition-all duration-300" id="announcementBox">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Broadcast Announcement</h3>
+                <button onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <form id="announcementForm" onsubmit="submitAnnouncement(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Target Audience</label>
+                    <select id="ann-target" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue" required>
+                        <option value="All Students">All Students (Global)</option>
+                        <option value="Introductory">Introductory Block Only</option>
+                        <option value="Block 1">Block 1 Only</option>
+                        <option value="Block 2">Block 2 Only</option>
+                        <option value="Block 3">Block 3 Only</option>
+                        <option value="Block 4">Block 4 Only</option>
+                        <option value="Block 5">Block 5 Only</option>
+                        <option value="Completed">Completed / Alumni Only</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Subject / Title</label>
+                    <input type="text" id="ann-title" placeholder="e.g. End of Semester Exams Schedule" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Message</label>
+                    <textarea id="ann-message" rows="4" placeholder="Type your detailed announcement here..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue" required></textarea>
+                </div>
+                
+                <button type="submit" id="btn-save-announcement" class="w-full bg-ramBlue text-white font-bold py-4 mt-2 rounded-xl shadow-lg hover:bg-blue-800 transition transform active:scale-95">
+                    <i class="fas fa-paper-plane mr-2"></i> Send Broadcast
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Clinical Placement Modal -->
+    <div id="placementModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-adminDark/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="placementBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 transform scale-90 opacity-0 transition-all duration-300" id="placementBox">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800">Assign Clinical Area</h3>
+                    <p id="placement-student-name" class="text-xs font-bold text-ramBlue mt-1">Student Name</p>
+                </div>
+                <button onclick="closePlacementModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <form id="placementForm" onsubmit="submitPlacement(event)" class="space-y-4">
+                <input type="hidden" id="place-adm">
+                <input type="hidden" id="place-block">
+                
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Hospital / Facility Name</label>
+                    <input type="text" id="place-hospital" placeholder="e.g. Nyangena Hospital" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue" required>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Start Date</label>
+                        <input type="date" id="place-start" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">End Date</label>
+                        <input type="date" id="place-end" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue" required>
+                    </div>
+                </div>
+                
+                <button type="submit" id="btn-save-placement" class="w-full bg-ramGreen text-white font-bold py-4 mt-2 rounded-xl shadow-lg hover:bg-green-700 transition transform active:scale-95">
+                    Confirm Placement
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[400px] z-[100] hidden transition-all duration-300 pointer-events-none"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="admin-dashboard.js"></script>
+    <script>
+        function toggleDrawer(isOpen) {
+            const drawer = document.getElementById('mobileDrawer');
+            const overlay = document.getElementById('drawerOverlay');
+            if (isOpen) {
+                drawer.classList.add('drawer-open');
+                overlay.classList.remove('hidden');
+            } else {
+                drawer.classList.remove('drawer-open');
+                overlay.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

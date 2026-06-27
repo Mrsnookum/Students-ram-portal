@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Portal | Ram Training College</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ramBlue: '#003366',
+                        ramRed: '#DC2626',
+                        ramGold: '#D4AF37',
+                        adminDark: '#0f172a' /* Deep slate for distinct admin branding */
+                    },
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-enter { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[400px] z-[60] hidden transition-all duration-300 pointer-events-none">
+        <div id="toastMessage" class="bg-white px-4 py-3 md:px-6 md:py-4 rounded-xl shadow-2xl border-l-4 font-semibold text-xs md:text-sm flex items-center justify-between pointer-events-auto">
+            <div class="flex items-center">
+                <i id="toastIcon" class="fas mr-3 text-base md:text-lg"></i>
+                <span id="toastText" class="text-gray-800 leading-tight">Message goes here</span>
+            </div>
+            <button onclick="hideToast()" class="text-gray-400 hover:text-gray-600 ml-4 transition-colors"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <div class="bg-white w-full max-w-4xl h-[90vh] md:h-[75vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative border border-gray-200">
+        
+        <div class="w-full h-48 md:h-full md:w-5/12 relative shrink-0 bg-adminDark flex flex-col justify-center items-center text-center p-8 overflow-hidden">
+            <div class="absolute inset-0 opacity-10 bg-[url('logoram.jpg')] bg-cover bg-center"></div>
+            <div class="relative z-10">
+                <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <i class="fas fa-shield-alt text-4xl text-adminDark"></i>
+                </div>
+                <h2 class="text-2xl md:text-3xl font-bold text-white mb-2 tracking-tight">Staff Portal</h2>
+                <p class="text-sm text-gray-400 font-medium tracking-wide">Ram Training College</p>
+                <div class="mt-8 border-t border-gray-700 pt-6">
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-black">Authorized Personnel Only</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full md:w-7/12 flex flex-col relative bg-white flex-1 overflow-y-auto">
+            <div class="flex-1 p-8 sm:p-12 flex flex-col justify-center w-full max-w-md mx-auto">
+                
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold text-gray-800 tracking-tight">Secure Sign In</h3>
+                    <p class="text-xs md:text-sm text-gray-500 mt-2">Enter your official staff email and password.</p>
+                </div>
+
+                <form id="adminLoginForm" class="space-y-6">
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-black text-gray-500 uppercase tracking-wider mb-2">Work Email</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                            <input type="email" id="adminEmail" placeholder="name@ram.ac.ke" 
+                                   class="w-full pl-11 pr-4 py-3.5 rounded-xl border border-gray-300 focus:border-adminDark focus:ring-2 focus:ring-adminDark/20 outline-none transition-all text-sm bg-gray-50 focus:bg-white" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-black text-gray-500 uppercase tracking-wider mb-2">Password</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" id="adminPassword" placeholder="••••••••" 
+                                   class="w-full pl-11 pr-4 py-3.5 rounded-xl border border-gray-300 focus:border-adminDark focus:ring-2 focus:ring-adminDark/20 outline-none transition-all text-sm bg-gray-50 focus:bg-white" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="adminLoginBtn" class="w-full bg-adminDark text-white font-bold py-4 rounded-xl shadow-lg hover:bg-slate-800 transition transform active:scale-95 text-sm flex items-center justify-center">
+                        Access Portal <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </form>
+
+                <div class="mt-8 text-center bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                    <p class="text-xs text-gray-600 leading-relaxed">
+                        <i class="fas fa-info-circle text-ramBlue mr-1"></i> New staff members must request portal access directly from the System Administrator.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="admin-login.js"></script>
+</body>
+</html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard | Ram Training College</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ramBlue: '#003366', 
+                        ramRed: '#DC2626',
+                        ramGreen: '#059669', 
+                        ramGold: '#D4AF37',
+                    },
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Modern Mobile Scroll Fixes */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { 
+            -ms-overflow-style: none; 
+            scrollbar-width: none; 
+            -webkit-overflow-scrolling: touch; 
+            overscroll-behavior-y: contain; 
+        }
+        
+        #mobileDrawer { transition: transform 0.3s ease-in-out; }
+        .drawer-open { transform: translateX(0) !important; }
+
+        @keyframes pulse-soft {
+            0% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(5, 150, 105, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+        }
+        .status-pulse { animation: pulse-soft 2s infinite; }
+        .modal-active { display: flex !important; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans h-screen flex overflow-hidden">
+
+    <div id="drawerOverlay" onclick="toggleDrawer(false)" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"></div>
+
+    <aside id="mobileDrawer" class="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-ramBlue text-white transform -translate-x-full md:translate-x-0 md:static md:w-64 flex flex-col shadow-2xl z-50 transition-transform">
+        <div class="h-20 flex items-center px-6 border-b border-blue-800">
+            <img src="logoram.jpg" alt="Logo" class="h-10 bg-white rounded p-1 mr-3">
+            <div>
+                <span class="block font-bold text-lg tracking-wide">MyPortal</span>
+                <span class="block text-[10px] text-blue-300 uppercase tracking-widest">Student Core</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 mt-6 px-4 space-y-1">
+            <button onclick="showSection('home')" id="nav-home" class="nav-btn w-full flex items-center px-4 py-3 bg-blue-800 rounded-xl transition-all shadow-inner text-white">
+                <i class="fas fa-th-large w-6"></i><span>Dashboard</span>
+            </button>
+            <button onclick="showSection('academics')" id="nav-academics" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100">
+                <i class="fas fa-graduation-cap w-6"></i><span>Results</span>
+            </button>
+            <button onclick="showSection('clinical')" id="nav-clinical" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100">
+                <i class="fas fa-hospital-user w-6"></i><span>Clinicals</span>
+            </button>
+            <button onclick="showSection('announcements')" id="nav-announcements" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100 relative">
+                <i class="fas fa-bullhorn w-6"></i><span>Announcements</span>
+                <span id="notif-dot" class="absolute right-4 top-4 h-2 w-2 bg-red-500 rounded-full hidden"></span>
+            </button>
+            <button onclick="showSection('support')" id="nav-support" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100">
+                <i class="fas fa-headset w-6"></i><span>Help/Issues</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-blue-800 bg-blue-900/30">
+            <div class="flex items-center gap-3">
+                <img id="ui-avatar" src="https://ui-avatars.com/api/?name=User&background=random" class="h-10 w-10 rounded-full border-2 border-white">
+                <div class="overflow-hidden">
+                    <p id="ui-name-sidebar" class="text-sm font-bold truncate">Loading...</p>
+                    <p id="ui-id-sidebar" class="text-[10px] text-blue-300 truncate tracking-wider">...</p>
+                </div>
+                <button onclick="logout()" class="ml-auto text-blue-300 hover:text-white transition"><i class="fas fa-power-off"></i></button>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        <header class="h-20 bg-white shadow-sm flex items-center justify-between px-4 md:px-8 z-10 shrink-0">
+            <div class="flex items-center">
+                <button onclick="toggleDrawer(true)" class="md:hidden text-ramBlue p-2 mr-2"><i class="fas fa-bars text-xl"></i></button>
+                <h2 id="page-title" class="text-xl font-bold text-gray-800 tracking-tight">Overview</h2>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex flex-col items-end border-r pr-4 border-gray-100">
+                    <span id="ui-intake-badge" class="text-[9px] font-black uppercase text-ramGold px-2 py-0.5 bg-yellow-50 rounded-full">Intake Pending</span>
+                    <span id="ui-block-header" class="text-xs font-bold text-ramBlue">Not Set</span>
+                </div>
+                <div class="flex items-center space-x-1 status-pulse bg-green-50 text-ramGreen px-3 py-1.5 rounded-full">
+                    <span class="h-2 w-2 bg-ramGreen rounded-full"></span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Online</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="contentWrapper" class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 no-scrollbar bg-gray-50">
+
+            <div id="section-home" class="space-y-6">
+                <div class="bg-gradient-to-br from-ramBlue to-blue-900 rounded-3xl p-6 md:p-10 text-white shadow-xl relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h1 id="ui-welcome-name" class="text-2xl md:text-4xl font-bold mb-2">Welcome Back!</h1>
+                        <p class="text-blue-100 text-sm md:text-base max-w-lg">Track your nursing progression, view block results, and manage your clinical schedules in one place.</p>
+                        <div id="setup-banner" class="mt-6 flex items-center gap-3 bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20 w-fit hidden">
+                            <i class="fas fa-user-edit text-ramGold"></i>
+                            <span class="text-xs">Complete your profile to lock your Block & Intake.</span>
+                            <button onclick="goToSetup()" class="bg-ramGold text-ramBlue font-bold text-[10px] px-3 py-1 rounded-lg">SETUP</button>
+                        </div>
+                    </div>
+                    <i class="fas fa-user-nurse absolute -right-6 -bottom-6 text-9xl opacity-5"></i>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3 bg-blue-50 text-ramBlue rounded-xl"><i class="fas fa-layer-group"></i></div>
+                            <span class="text-[10px] font-bold text-gray-400">PROGRESSION</span>
+                        </div>
+                        <p class="text-xs text-gray-500 font-medium">Academic Level</p>
+                        <h3 id="ui-block-main" class="text-xl font-bold text-gray-900 mt-1">Not Assigned</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3 bg-green-50 text-ramGreen rounded-xl"><i class="fas fa-calendar-check"></i></div>
+                            <span class="text-[10px] font-bold text-gray-400">PRESENCE</span>
+                        </div>
+                        <p class="text-xs text-gray-500 font-medium">Class Attendance</p>
+                        <h3 id="ui-attendance-main" class="text-xl font-bold text-gray-900 mt-1">0%</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3 bg-yellow-50 text-ramGold rounded-xl"><i class="fas fa-hospital"></i></div>
+                            <span class="text-[10px] font-bold text-gray-400">CLINICAL</span>
+                        </div>
+                        <p class="text-xs text-gray-500 font-medium">Placement Status</p>
+                        <h3 id="ui-placement-status" class="text-xl font-bold text-gray-900 mt-1">N/A</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <h4 class="font-bold text-ramBlue flex items-center mb-6"><i class="fas fa-history mr-2"></i> Recent Exam Activity</h4>
+                        <div id="results-mini-list" class="space-y-4">
+                            <p class="text-center text-xs text-gray-400 py-10">No results released for your current block.</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <h4 class="font-bold text-ramBlue flex items-center mb-6"><i class="fas fa-envelope-open-text mr-2"></i> Latest Announcements</h4>
+                        <div id="announcement-mini-list" class="space-y-4">
+                            <p class="text-center text-xs text-gray-400 py-10">Checking for updates...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-academics" class="hidden space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <div>
+                            <h3 id="ui-result-block-title" class="font-bold text-ramBlue">Current Block Results</h3>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Verified Records Only</p>
+                        </div>
+                        <button onclick="window.print()" class="p-2.5 bg-white border rounded-xl text-gray-600 hover:text-ramBlue shadow-sm transition"><i class="fas fa-print"></i></button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                <tr>
+                                    <th class="px-6 py-4">Unit Name</th>
+                                    <th class="px-6 py-4">Score</th>
+                                    <th class="px-6 py-4">Grade</th>
+                                    <th class="px-6 py-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-table-body" class="text-sm divide-y divide-gray-50">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-clinical" class="hidden space-y-6">
+                <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center max-w-2xl mx-auto">
+                    <div class="w-20 h-20 bg-blue-50 text-ramBlue rounded-full flex items-center justify-center text-3xl mx-auto mb-6">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <h3 id="ui-placement-hospital" class="text-2xl font-bold text-gray-800">No Current Placement</h3>
+                    <p id="ui-placement-details" class="text-sm text-gray-500 mt-2">When clinical rotations are assigned by the HOD, details will appear here.</p>
+                    <div class="grid grid-cols-2 gap-4 mt-8">
+                        <div class="p-4 bg-gray-50 rounded-2xl"><p class="text-[10px] font-black text-gray-400 uppercase">Start Date</p><p id="ui-placement-start" class="font-bold text-ramBlue mt-1">---</p></div>
+                        <div class="p-4 bg-gray-50 rounded-2xl"><p class="text-[10px] font-black text-gray-400 uppercase">End Date</p><p id="ui-placement-end" class="font-bold text-ramBlue mt-1">---</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-announcements" class="hidden space-y-6">
+                <div class="max-w-3xl mx-auto space-y-4" id="full-announcement-list">
+                </div>
+            </div>
+
+            <div id="section-support" class="hidden space-y-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-fit">
+                        <h3 class="font-bold text-gray-800 mb-6">Student Profile</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-[10px] font-black text-gray-400 uppercase">Admission Number</label>
+                                <input type="text" id="prof-adm" readonly class="w-full mt-1 px-4 py-3 bg-gray-100 border-none rounded-xl text-gray-500 text-sm font-bold cursor-not-allowed">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase">Intake</label>
+                                    <select id="prof-intake" class="w-full mt-1 px-4 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-ramBlue">
+                                        <option value="">Select Intake</option>
+                                        <option value="March Intake">March Intake</option>
+                                        <option value="September Intake">September Intake</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase">Current Block</label>
+                                    <select id="prof-block" class="w-full mt-1 px-4 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-ramBlue">
+                                        <option value="">Select Block</option>
+                                        <option value="Introductory">Introductory</option>
+                                        <option value="Block 1">Block 1</option>
+                                        <option value="Block 2">Block 2</option>
+                                        <option value="Block 3">Block 3</option>
+                                        <option value="Block 4">Block 4</option>
+                                        <option value="Block 5">Block 5</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button id="btn-lock-profile" onclick="lockProfile()" class="w-full bg-ramBlue text-white font-bold py-4 rounded-xl shadow hover:bg-blue-800 transition transform active:scale-95">Save & Lock Progression</button>
+                            <p class="text-[10px] text-center text-gray-400 mt-2 uppercase tracking-widest font-black">Changes require admin approval after locking</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                            <h3 class="font-bold text-gray-800 mb-6">Raise an Official Issue</h3>
+                            <form id="issueForm" onsubmit="submitIssue(event)" class="space-y-4">
+                                <select id="issue-category" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-ramRed" required>
+                                    <option value="">Select Category</option>
+                                    <option>Missing Results</option>
+                                    <option>Clinical Attendance</option>
+                                    <option>Hostel/Accommodation</option>
+                                    <option>Profile Setup Error</option>
+                                    <option>Other</option>
+                                </select>
+                                <textarea id="issue-msg" rows="4" placeholder="Explain your issue in detail..." class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramRed resize-none" required></textarea>
+                                
+                                <div class="relative w-full">
+                                    <input type="file" id="issue-file" class="hidden" accept="image/*">
+                                    <button type="button" onclick="document.getElementById('issue-file').click()" class="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-xs text-gray-500 font-bold hover:bg-gray-50 transition">
+                                        <i class="fas fa-camera mr-2"></i> Attach Proof (Optional)
+                                    </button>
+                                    <p id="file-status" class="text-[10px] text-gray-400 mt-1 italic text-center"></p>
+                                </div>
+
+                                <button type="submit" id="btn-issue" class="w-full bg-ramRed text-white font-bold py-4 rounded-xl shadow-lg hover:bg-red-700 transition">Submit to Administration</button>
+                            </form>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                            <h3 class="font-bold text-gray-800 mb-4"><i class="fas fa-ticket-alt mr-2"></i>My Support Tickets</h3>
+                            <div id="issues-list" class="space-y-4 max-h-96 overflow-y-auto no-scrollbar">
+                                <p class="text-xs text-gray-400 italic text-center py-4">You have no open issues.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="customModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-ramBlue/40 backdrop-blur-md opacity-0 transition-opacity duration-300" id="modalBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 transform scale-90 opacity-0 transition-all duration-300" id="modalBox">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-blue-50 text-ramBlue rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                    <i id="modalIcon" class="fas fa-question-circle"></i>
+                </div>
+                <h3 id="modalTitle" class="text-xl font-bold text-gray-800">Are you sure?</h3>
+                <p id="modalDescription" class="text-sm text-gray-500 mt-2 leading-relaxed">This action cannot be undone without admin assistance.</p>
+            </div>
+            <div class="flex gap-3 mt-8">
+                <button onclick="closeCustomModal()" class="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-400 hover:bg-gray-50 transition">Cancel</button>
+                <div id="modalConfirmBtn" class="flex-1 py-3 text-white rounded-xl font-bold shadow-lg transition transform active:scale-95 flex items-center justify-center cursor-pointer">Confirm</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="forcedSetupModal" class="fixed inset-0 z-[110] hidden flex items-center justify-center px-4 bg-ramBlue/80 backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 text-center transform transition-all duration-300">
+            <div class="w-20 h-20 bg-yellow-50 text-ramGold rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">Profile Incomplete</h3>
+            <p class="text-sm text-gray-600 mb-8 leading-relaxed">You must lock your Intake and Current Block to unlock your academic results, clinicals, and announcements.</p>
+            <button onclick="goToSetup()" class="w-full py-4 bg-ramGold text-ramBlue rounded-xl font-black uppercase tracking-widest shadow-lg hover:shadow-xl transition transform active:scale-95">Complete Setup Now</button>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[400px] z-[120] hidden transition-all duration-300 pointer-events-none"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="dashboard.js"></script>
+    <script>
+        function toggleDrawer(isOpen) {
+            const drawer = document.getElementById('mobileDrawer');
+            const overlay = document.getElementById('drawerOverlay');
+            if (isOpen) {
+                drawer.classList.add('drawer-open');
+                overlay.classList.remove('hidden');
+            } else {
+                drawer.classList.remove('drawer-open');
+                overlay.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
