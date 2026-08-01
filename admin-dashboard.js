@@ -8,6 +8,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Define your live external API base URL here for easy reference
+const BACKEND_API_URL = 'http://127.0.0.1:8000/api';
+
 let currentAdmin = null;
 let adminProfile = null;
 
@@ -462,11 +465,8 @@ async function hodSubmitLecturer(event) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Deploying via External Server...';
 
-    // Replace this URL with your actual deployed backend URL (e.g., Render, Railway, or VPS)
-    const EXTERNAL_BACKEND_URL = 'https://ram-portal-backend.onrender.com/api/create-staff';
-
     try {
-        const response = await fetch(EXTERNAL_BACKEND_URL, {
+        const response = await fetch(`${BACKEND_API_URL}/create-staff`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -546,8 +546,9 @@ async function fetchPendingApprovals() {
                         <p class="text-sm font-bold text-gray-800">${group.unit}</p>
                         <p class="text-[10px] text-gray-500">${group.count} student result(s) waiting</p>
                     </div>
-                    <button onclick="approveResults('${group.block}', '${group.unit}')" class="text-xs font-bold text-white bg-ramGreen hover:bg-green-700 px-4 py-2 rounded-lg transition shadow-sm">
-                        Approve <i class="fas fa-check ml-1"></i>
+                    <!-- PASSING 'this' TO TARGET THE SPECIFIC BUTTON -->
+                    <button onclick="approveResults('${group.block}', '${group.unit}', this)" class="text-xs font-bold text-white bg-ramGreen hover:bg-green-700 px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-2">
+                        <span>Approve</span> <i class="fas fa-check"></i>
                     </button>
                 </div>
             `;
@@ -558,17 +559,31 @@ async function fetchPendingApprovals() {
     }
 }
 
-// --- DIRECT SUPABASE: APPROVE RESULTS ---
-async function approveResults(blockName, unitName) {
-    try {
-        const { error } = await supabaseClient
-            .from('exam_results')
-            .update({ status: 'Approved' })
-            .eq('block_name', blockName)
-            .eq('unit_name', unitName)
-            .eq('status', 'Pending');
+// --- UPDATED: EXTERNAL BACKEND - APPROVE RESULTS (With Animation) ---
+async function approveResults(blockName, unitName, btnElement) {
+    // 1. Save original button state to revert on failure
+    const originalHTML = btnElement.innerHTML;
+    
+    // 2. Trigger Loading Animation
+    btnElement.disabled = true;
+    btnElement.innerHTML = '<span>Approving...</span> <i class="fas fa-spinner fa-spin"></i>';
+    btnElement.classList.replace('bg-ramGreen', 'bg-gray-400');
+    btnElement.classList.replace('hover:bg-green-700', 'hover:bg-gray-400');
 
-        if (error) throw error;
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/approve-results`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                block_name: blockName,
+                unit_name: unitName,
+                action: 'Approve',
+                staff_id: adminProfile.id
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.detail || "Failed to approve results.");
         
         showToast(`Results for ${unitName} approved!`, "success");
         fetchPendingApprovals(); // Refresh list
@@ -576,6 +591,12 @@ async function approveResults(blockName, unitName) {
     } catch (e) {
         showToast(e.message, "error");
         console.error(e);
+        
+        // 3. Revert Button on Error
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalHTML;
+        btnElement.classList.replace('bg-gray-400', 'bg-ramGreen');
+        btnElement.classList.replace('hover:bg-gray-400', 'hover:bg-green-700');
     }
 }
 
@@ -724,6 +745,7 @@ function createMetricCard(title, value, icon, colorClass) {
 
 let currentGradingSession = { block: '', unit: '' };
 
+// --- UPDATED: EXTERNAL BACKEND - SMART GRADE FILTERING ---
 async function openGradebook(blockName, unitName) {
     currentGradingSession = { block: blockName, unit: unitName };
     
@@ -735,9 +757,8 @@ async function openGradebook(blockName, unitName) {
     const box = document.getElementById('gradebookBox');
     const tbody = document.getElementById('gradebook-tbody');
 
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading students...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading ungraded students...</td></tr>';
 
-    // FIX: Restore animation code so modal becomes visible!
     modal.classList.remove('hidden');
     setTimeout(() => {
         backdrop.classList.replace('opacity-0', 'opacity-100');
@@ -746,21 +767,22 @@ async function openGradebook(blockName, unitName) {
     }, 10);
 
     try {
-        const { data: students, error } = await supabaseClient
-            .from('students')
-            .select('first_name, last_name, admission_number')
-            .eq('block', blockName);
+        // Fetch ONLY students who have not yet received a grade for this specific unit
+        const response = await fetch(`${BACKEND_API_URL}/ungraded-students/${blockName}/${unitName}`);
+        const resData = await response.json();
 
-        if (error) throw error;
+        if (!response.ok || !resData.success) throw new Error(resData.detail || "Database Error");
+
+        const students = resData.students;
 
         if (!students || students.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-400">No students found in ' + blockName + '.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-green-500">All students in ' + blockName + ' have been graded for this unit.</td></tr>';
             return;
         }
 
         tbody.innerHTML = '';
         students.forEach((student, index) => {
-            const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+            const fullName = student.student_name ? student.student_name : `${student.first_name || ''} ${student.last_name || ''}`.trim();
             const admNumber = student.admission_number || 'N/A';
 
             tbody.innerHTML += `
@@ -814,7 +836,7 @@ async function addSupplementaryStudent() {
         const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
         const tbody = document.getElementById('gradebook-tbody');
         
-        if (tbody.innerHTML.includes("No students found")) tbody.innerHTML = '';
+        if (tbody.innerHTML.includes("have been graded")) tbody.innerHTML = '';
 
         const newRowIndex = document.querySelectorAll('.student-row').length;
 
@@ -883,39 +905,24 @@ function calculateRowGrade(rowIndex) {
     }
 }
 
-// --- DIRECT SUPABASE: SUBMIT GRADES & PREVENT DUPLICATES ---
+// --- UPDATED: EXTERNAL BACKEND - SUBMIT GRADES & LOG AUDIT ---
 async function submitGrades() {
     const btn = document.getElementById('btn-submit-grades');
     const rows = document.querySelectorAll('.student-row');
     const gradesPayload = [];
 
-    // 1. Calculate and pack grades locally
+    // 1. Pack grades locally (Server handles final calculation & assignments securely)
     rows.forEach(row => {
         const catStr = row.querySelector('.cat-input').value;
         const examStr = row.querySelector('.exam-input').value;
 
         // Only pack if the lecturer actually typed something in
         if (catStr !== '' || examStr !== '') {
-            const catScore = parseFloat(catStr) || 0;
-            const examScore = parseFloat(examStr) || 0;
-            const totalScore = catScore + examScore;
-
-            let grade = 'Fail';
-            if (totalScore >= 80) grade = 'Distinction';
-            else if (totalScore >= 70) grade = 'Credit';
-            else if (totalScore >= 60) grade = 'Pass';
-
             gradesPayload.push({
                 student_name: row.getAttribute('data-name'),
                 admission_number: row.getAttribute('data-adm'),
-                block_name: currentGradingSession.block,
-                unit_name: currentGradingSession.unit,
-                lecturer_id: adminProfile.id,
-                cat_score: catScore,
-                exam_score: examScore,
-                total_score: totalScore,
-                grade: grade,
-                status: 'Pending'
+                cat_score: parseFloat(catStr) || 0,
+                exam_score: parseFloat(examStr) || 0
             });
         }
     });
@@ -926,36 +933,29 @@ async function submitGrades() {
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Checking database...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting to Server...';
 
     try {
-        // 2. Prevent Duplicates Lock (Check database first)
-        const { data: existingRecords, error: fetchError } = await supabaseClient
-            .from('exam_results')
-            .select('admission_number')
-            .eq('block_name', currentGradingSession.block)
-            .eq('unit_name', currentGradingSession.unit);
+        const payload = {
+            block_name: currentGradingSession.block,
+            unit_name: currentGradingSession.unit,
+            lecturer_id: adminProfile.id,
+            grades: gradesPayload
+        };
 
-        if (fetchError) throw fetchError;
+        const response = await fetch(`${BACKEND_API_URL}/submit-grades`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
-        const existingAdms = existingRecords.map(r => r.admission_number);
+        const data = await response.json();
 
-        // 3. Filter out duplicate students 
-        const newGrades = gradesPayload.filter(g => !existingAdms.includes(g.admission_number));
-        const duplicateCount = gradesPayload.length - newGrades.length;
-
-        if (newGrades.length === 0) {
-            throw new Error("All selected students already have grades submitted for this unit.");
+        if (!response.ok || !data.success) {
+            throw new Error(data.detail || "Server failed to process grades.");
         }
 
-        // 4. Send directly to Supabase
-        const { error: insertError } = await supabaseClient.from('exam_results').insert(newGrades);
-        if (insertError) throw insertError;
-
-        let successMsg = `Submitted ${newGrades.length} result(s).`;
-        if (duplicateCount > 0) successMsg += ` Skipped ${duplicateCount} duplicate(s).`;
-
-        showToast(successMsg, "success");
+        showToast(data.message || `Submitted ${gradesPayload.length} result(s).`, "success");
         closeGradebookModal();
         fetchLecturerSubmissions(); // Update the local table
         loadActivityFeed(adminProfile.role_level); // Update live feed instantly
@@ -1029,28 +1029,36 @@ function closeAnnouncementModal() {
     setTimeout(() => { document.getElementById('announcementModal').classList.add('hidden'); }, 300);
 }
 
+// --- UPDATED: EXTERNAL BACKEND - BROADCAST (Triggers 5-day Expiry Log) ---
 async function submitAnnouncement(event) {
     event.preventDefault();
     const btn = document.getElementById('btn-save-announcement');
-    const target = document.getElementById('ann-target').value;
     const title = document.getElementById('ann-title').value.trim();
     const message = document.getElementById('ann-message').value.trim();
+    
+    // RESTORED: Target audience value properly retrieved from the UI dropdown
+    const targetDropdown = document.getElementById('ann-target');
+    const target = targetDropdown ? targetDropdown.value : 'All Students';
 
     btn.disabled = true; 
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Broadcasting...';
 
     try {
-        const payload = {
-            title: title,
-            message: message,
-            target_audience: target,
-            posted_by: currentAdmin.id // Links to the logged-in staff member
-        };
+        const response = await fetch(`${BACKEND_API_URL}/create-announcement`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                message: message,
+                target_audience: target, // Added back so the backend knows who to send it to
+                staff_id: currentAdmin.id 
+            })
+        });
 
-        const { error } = await supabaseClient.from('global_announcements').insert([payload]);
-        if (error) throw error;
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.detail || "Broadcast failed.");
 
-        showToast(`Announcement successfully sent to ${target}!`, "success");
+        showToast("Announcement successfully sent and logged!", "success");
         closeAnnouncementModal();
         fetchAnnouncements(); // Refresh the feed immediately
     } catch (e) { 
@@ -1069,8 +1077,9 @@ async function fetchAnnouncements() {
 
     try {
         // Fetch announcements and join with staff_profiles to get the author's real name
+        // PERFECTLY matching your global_announcements table
         const { data, error } = await supabaseClient
-            .from('global_announcements')
+            .from('global_announcements') 
             .select('*, staff_profiles(full_name)')
             .eq('is_active', true)
             .order('created_at', { ascending: false });
@@ -1090,7 +1099,7 @@ async function fetchAnnouncements() {
             const author = ann.staff_profiles ? ann.staff_profiles.full_name : 'Admin';
             
             // Highlight specific targets in Gold, Global ones in Blue
-            const audienceBadge = ann.target_audience === 'All Students' 
+            const audienceBadge = (ann.target_audience === 'All Students' || !ann.target_audience) 
                 ? '<span class="bg-blue-100 text-ramBlue px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase">Global</span>'
                 : `<span class="bg-ramGold/20 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase">${ann.target_audience}</span>`;
 
