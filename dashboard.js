@@ -138,14 +138,18 @@ async function fetchAcademicData(admissionId, block, intake) {
     document.getElementById('announcement-mini-list').innerHTML = '<p class="text-xs text-gray-400 animate-pulse text-center py-4">Fetching updates...</p>';
 
     try {
-        const [resultsRes, announcementsRes, placementRes, issuesRes] = await Promise.all([
-            // Matches your 'exam_results' table schema for approved results
+        const now = new Date().toISOString(); // Current time for the expiry check
+
+        const [blockStatusRes, resultsRes, announcementsRes, placementRes, issuesRes] = await Promise.all([
+            // 1. Checks if the entire block is published (All-or-Nothing Logic)
+            supabaseClient.from('student_blocks').select('is_published').eq('block_name', block).single(),
+            // 2. Fetch approved results
             supabaseClient.from('exam_results').select('*').eq('admission_number', admissionId).eq('block_name', block).eq('status', 'Approved'),
-            // Matches your 'global_announcements' table and targets - updated to include staff_profiles(full_name)
+            // 3. Fetch active announcements matching the student's block or global
             supabaseClient.from('global_announcements').select('*, staff_profiles(full_name)').eq('is_active', true).in('target_audience', ['All Students', block, intake]).order('created_at', { ascending: false }),
-            // Fetches the most recent clinical placement securely without crashing on empty
+            // 4. Fetches the most recent clinical placement securely
             supabaseClient.from('clinical_placements').select('*').eq('admission_number', admissionId).order('created_at', { ascending: false }).limit(1),
-            // Matches your 'support_tickets' schema linking via admission number
+            // 5. Matches your 'support_tickets' schema
             supabaseClient.from('support_tickets').select('*').eq('admission_number', admissionId).order('created_at', { ascending: false })
         ]);
 
@@ -154,8 +158,14 @@ async function fetchAcademicData(admissionId, block, intake) {
         if(tableBody) tableBody.innerHTML = "";
         if(miniList) miniList.innerHTML = "";
 
+        // Evaluate "All-or-Nothing" Grade Status
+        const isPublished = blockStatusRes.data && blockStatusRes.data.is_published === true;
         const results = resultsRes.data || [];
-        if (results.length > 0) {
+        
+        if (!isPublished) {
+            if(tableBody) tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-500 text-sm"><i class="fas fa-lock text-2xl text-gray-300 mb-3 block"></i>Results Pending Final Approval</td></tr>';
+            if(miniList) miniList.innerHTML = '<p class="text-center text-xs text-gray-400 py-4"><i class="fas fa-lock mr-1 text-gray-300"></i> Results Pending Approval</p>';
+        } else if (results.length > 0) {
             results.forEach(item => {
                 if(tableBody) {
                     tableBody.innerHTML += `
@@ -170,7 +180,6 @@ async function fetchAcademicData(admissionId, block, intake) {
                     miniList.innerHTML += `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2"><span class="text-xs font-bold text-gray-600">${item.unit_name}</span><span class="text-xs font-black text-ramBlue">${item.grade}</span></div>`;
                 }
             });
-            if (miniList && miniList.innerHTML === "") miniList.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">No results released yet.</p>';
         } else {
             if(tableBody) tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500 text-sm">No units found for this block.</td></tr>';
             if(miniList) miniList.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">No units found.</p>';
@@ -230,7 +239,7 @@ async function fetchAcademicData(admissionId, block, intake) {
         const elements = ['announcement-mini-list', 'results-mini-list'];
         elements.forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Failed to load content.</p>';
+            if (el) el.innerHTML = '<p class="text-xs text-red-50 text-center py-4">Failed to load content.</p>';
         });
     }
 }
