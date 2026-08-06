@@ -62,6 +62,25 @@ function resetBtn(btn, text) {
     btn.classList.remove('opacity-50', 'cursor-wait');
 }
 
+// --- DYNAMIC MODAL HANDLER ---
+function showAuthModal(title, message, iconClass, colorClass) {
+    document.getElementById('authModalTitle').innerText = title;
+    document.getElementById('authModalMessage').innerText = message;
+    
+    const icon = document.getElementById('authModalIcon');
+    icon.className = `fas ${iconClass} ${colorClass}`;
+    
+    document.getElementById('authStatusModal').classList.remove('hidden');
+    
+    // Slight delay to trigger CSS transitions
+    setTimeout(() => {
+        document.getElementById('authModalBackdrop').classList.replace('opacity-0', 'opacity-100');
+        const box = document.getElementById('authModalBox');
+        box.classList.replace('scale-90', 'scale-100');
+        box.classList.replace('opacity-0', 'opacity-100');
+    }, 10);
+}
+
 // --- SUPABASE LOGIN LOGIC ---
 async function handleLogin(event) {
     event.preventDefault();
@@ -79,28 +98,52 @@ async function handleLogin(event) {
     try {
         const authEmail = getAuthEmail(usernameInput);
 
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
             email: authEmail,
             password: passwordInput,
         });
 
-        if (error) {
-            throw error;
+        if (authError) {
+            throw authError;
         }
 
-        // Supabase securely handles session storage automatically.
+        // Check if the student is approved by Admin/HOD
+        const { data: studentData, error: studentError } = await supabaseClient
+            .from('students')
+            .select('is_approved')
+            .eq('auth_id', authData.user.id)
+            .single();
+
+        if (studentError || !studentData) {
+            await supabaseClient.auth.signOut();
+            throw new Error("Student profile could not be verified.");
+        }
+
+        // If not approved, kick them out and show the locked modal
+        if (studentData.is_approved === false) {
+            await supabaseClient.auth.signOut(); // Destroy the session immediately
+            resetBtn(btn, "Sign In");
+            showAuthModal(
+                "Account Pending Approval",
+                "Your account is currently awaiting verification by the Administration. You will be able to log in once your admission status is confirmed.",
+                "fa-user-lock",
+                "text-ramGold"
+            );
+            return;
+        }
+
+        // If approved, proceed normally
         showToast("Login successful! Redirecting...", "success");
         setTimeout(() => {
             window.location.href = "dashboard.html";
         }, 1000);
 
     } catch (error) {
-        showToast("Invalid admission number or password.", "error");
+        showToast(error.message || "Invalid admission number or password.", "error");
         resetBtn(btn, "Sign In");
     }
 }
 
-// --- SUPABASE REGISTRATION LOGIC ---
 // --- SUPABASE REGISTRATION LOGIC ---
 async function handleRegister(event) {
     event.preventDefault();
@@ -135,18 +178,16 @@ async function handleRegister(event) {
             }
         });
 
-        // If Auth fails, throw it so the catch block can handle it
         if (authError) throw authError;
 
-        // 2. Insert the student into your public 'students' table
-        // FIXED: We now pass the auth_id and a valid starting block to satisfy the database!
+        // 2. Insert the student into your public 'students' table (is_approved defaults to false via DB)
         const { error: dbError } = await supabaseClient.from('students').insert([{
-            auth_id: authData.user.id,        // Links the secure login to the dashboard profile
+            auth_id: authData.user.id,
             admission_number: adm,
             first_name: first,
             last_name: last,
-            block: 'Introductory',            // Satisfies the valid_blocks constraint
-            course: 'Pending Assignment'      // Matches your existing database structure
+            block: 'Pending',
+            course: 'KRCHN'
         }]);
 
         if (dbError) {
@@ -154,17 +195,20 @@ async function handleRegister(event) {
             throw new Error(`Database error: ${dbError.message}`);
         }
 
-        showToast("Account activated successfully! Please log in.", "success");
-        
+        // Successfully created. Show pending modal instead of immediately logging them in.
         document.getElementById('registerForm').reset();
-        setTimeout(() => {
-            toggleForms();
-            document.getElementById('loginUsername').value = adm;
-            resetBtn(btn, "Activate & Login");
-        }, 1500);
+        toggleForms();
+        document.getElementById('loginUsername').value = adm;
+        resetBtn(btn, "Activate & Login");
+        
+        showAuthModal(
+            "Registration Successful",
+            "Your student account has been created securely. However, it must be verified and approved by the HOD before you can log in. Please check back later.",
+            "fa-shield-check",
+            "text-ramBlue"
+        );
 
     } catch (error) {
-        // UNMASK THE ERROR: Pull the actual message from Supabase
         console.error("Supabase Registration Error:", error);
         let errMsg = error.message || "An unknown error occurred.";
         
