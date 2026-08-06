@@ -159,7 +159,48 @@
         </div>
     </div>
 
+    <!-- DYNAMIC STATUS MODAL (For Approvals/Rejections) -->
+    <div id="authStatusModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <!-- Replaced bg-ramBlue/90 with bg-gray-900/60 to remove the solid blue screen -->
+        <div id="authModalBackdrop" class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300"></div>
+        
+        <div id="authModalBox" class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative z-10 scale-90 opacity-0 transition-all duration-300">
+            <div class="p-8 text-center">
+                
+                <!-- School Logo Integration -->
+                <img src="logoram.jpg" alt="Ram Training College" class="h-16 mx-auto mb-6 object-contain">
+                
+                <!-- Dynamic Icon Container -->
+                <div id="authModalIconContainer" class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center bg-gray-50 border border-gray-100 shadow-sm">
+                    <i id="authModalIcon" class="fas text-3xl"></i>
+                </div>
+                
+                <h3 id="authModalTitle" class="text-2xl font-bold text-gray-800 mb-3">Notice</h3>
+                <p id="authModalMessage" class="text-sm text-gray-600 mb-8 leading-relaxed px-4">Message goes here.</p>
+                
+                <!-- Added bg-ramBlue class here to ensure the button is visible -->
+                <button onclick="closeAuthModal()" id="authModalBtn" class="w-full py-3.5 bg-ramBlue hover:bg-blue-800 text-white rounded-xl font-bold shadow-lg transition transform active:scale-95 text-sm tracking-wide uppercase">
+                    Understood
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="login.js"></script>
+    <script>
+        function closeAuthModal() {
+            const backdrop = document.getElementById('authModalBackdrop');
+            const box = document.getElementById('authModalBox');
+            
+            backdrop.classList.replace('opacity-100', 'opacity-0');
+            box.classList.replace('scale-100', 'scale-90');
+            box.classList.replace('opacity-100', 'opacity-0');
+            
+            setTimeout(() => {
+                document.getElementById('authStatusModal').classList.add('hidden');
+            }, 300);
+        }
+    </script>
 </body>
 </html>
