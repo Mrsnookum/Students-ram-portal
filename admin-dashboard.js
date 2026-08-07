@@ -229,21 +229,37 @@ async function updatePassword(event) {
     const btn = document.getElementById('btn-update-pwd');
     const newPassword = document.getElementById('new-password').value;
 
+    if (newPassword.length < 6) {
+        showToast("Password must be at least 6 characters.", "error");
+        return;
+    }
+
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Updating Securely...';
 
     try {
+        // 1. Update the password via Supabase Auth
         const { error } = await supabaseClient.auth.updateUser({
             password: newPassword
         });
 
         if (error) throw error;
 
-        showToast("Password updated successfully!", "success");
+        // 2. Clear the form and show success message
         document.getElementById('settingsForm').reset();
+        showToast("Password updated! Forcing secure logout...", "success");
+        
+        // 3. Force re-login after 2.5 seconds so the new credentials take effect instantly
+        setTimeout(async () => {
+            await supabaseClient.auth.signOut();
+            window.location.href = "admin-login.html";
+        }, 2500);
+
     } catch (e) {
-        showToast(e.message, "error");
-    } finally {
+        console.error(e);
+        showToast(e.message || "Failed to update password.", "error");
+        
+        // Only re-enable the button if it failed. If it succeeds, we want it to stay locked while redirecting.
         btn.disabled = false;
         btn.innerText = "Update Password";
     }
@@ -990,6 +1006,16 @@ async function loadDynamicOverview() {
 
     let metricsHTML = '';
     const role = adminProfile.role_level;
+
+    // Show audit button for SuperAdmins & Principals
+    const auditBtn = document.getElementById('btn-view-audit');
+    if (auditBtn) {
+        if (role === 'SuperAdmin' || role === 'Principal' || role === 'Principal / Deputy') {
+            auditBtn.classList.remove('hidden');
+        } else {
+            auditBtn.classList.add('hidden');
+        }
+    }
 
     try {
         if (role === 'SuperAdmin' || role === 'Principal' || role === 'Principal / Deputy') {
@@ -1813,11 +1839,11 @@ async function fetchAnnouncements() {
             }
 
             return `
-                <div id="ann-${ann.id}" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 relative">
-                    <div class="absolute top-4 right-4">
+                <div id="ann-${ann.id}" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 relative group">
+                    <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         ${actionButtons}
                     </div>
-                    <div class="flex justify-between items-start mb-4 pr-16">
+                    <div class="flex justify-between items-start mb-4 pr-12">
                         <div>
                             <h4 class="text-lg font-bold text-gray-800">${ann.title}</h4>
                             <p class="text-[10px] text-gray-400 mt-1">Posted by <span class="font-bold">${author}</span> on ${date}</p>
@@ -2091,5 +2117,107 @@ async function updateWelfareTicket(event) {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Case';
+    }
+}
+
+// --- AUDIT LOG LOGIC ---
+function openAuditModal() {
+    const modal = document.getElementById('auditLogModal');
+    const backdrop = document.getElementById('auditLogBackdrop');
+    const box = document.getElementById('auditLogBox');
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        backdrop.classList.replace('opacity-0', 'opacity-100');
+        box.classList.replace('scale-90', 'scale-100');
+        box.classList.replace('opacity-0', 'opacity-100');
+    }, 10);
+
+    fetchFullAuditLogs();
+}
+
+function closeAuditModal() {
+    const backdrop = document.getElementById('auditLogBackdrop');
+    const box = document.getElementById('auditLogBox');
+    
+    backdrop.classList.replace('opacity-100', 'opacity-0');
+    box.classList.replace('scale-100', 'scale-90');
+    box.classList.replace('opacity-100', 'opacity-0');
+    
+    setTimeout(() => {
+        document.getElementById('auditLogModal').classList.add('hidden');
+    }, 300);
+}
+
+async function fetchFullAuditLogs() {
+    const feed = document.getElementById('audit-log-feed');
+    const filter = document.getElementById('audit-filter').value;
+    if (!feed) return;
+
+    feed.innerHTML = `
+        <div class="text-center py-8">
+            <i class="fas fa-spinner fa-spin text-3xl text-gray-300 mb-4"></i>
+            <p class="text-sm text-gray-500 italic">Fetching secure logs...</p>
+        </div>
+    `;
+
+    try {
+        // Updated to fetch via Python Backend for security
+        const response = await fetch(`${BACKEND_API_URL}/audit-logs?requester_id=${adminProfile.auth_id}&filter_type=${filter}`);
+        
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+            throw new Error(result.detail || "Failed to fetch secure audit logs.");
+        }
+
+        const data = result.logs;
+
+        if (!data || data.length === 0) {
+            feed.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-clipboard-check text-4xl text-gray-200 mb-3"></i>
+                    <p class="text-sm text-gray-400 italic">No audit logs found for this category.</p>
+                </div>`;
+            return;
+        }
+
+        feed.innerHTML = data.map(log => {
+            const date = new Date(log.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            const staffName = log.staff_profiles ? log.staff_profiles.full_name : 'System / Unknown';
+            const staffRole = log.staff_profiles ? log.staff_profiles.role_level : 'Admin';
+
+            // Determine badge style
+            let badgeColor = 'bg-gray-100 text-gray-600 border-gray-200';
+            const action = log.action_type || '';
+            
+            if (action.includes('DELETE') || action.includes('REJECT') || log.description.includes('Deactivated')) {
+                badgeColor = 'bg-red-50 text-red-700 border-red-200';
+            } else if (action.includes('APPROVE') || action.includes('PUBLISH') || action.includes('CREATE')) {
+                badgeColor = 'bg-green-50 text-green-700 border-green-200';
+            } else if (action.includes('EDIT') || action.includes('UPDATE')) {
+                badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+            }
+
+            return `
+                <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-3 flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-200 shrink-0">
+                        <i class="fas fa-fingerprint text-gray-400"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="text-sm font-bold text-gray-800">${staffName} <span class="text-[10px] font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded ml-2">${staffRole}</span></p>
+                            <span class="text-[10px] text-gray-400 whitespace-nowrap">${date}</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mb-2">${log.description}</p>
+                        <span class="px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider border ${badgeColor}">${action}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (e) {
+        console.error(e);
+        feed.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Failed to load audit trail.</p>';
     }
 }
