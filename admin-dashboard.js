@@ -9,7 +9,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Define your live external API base URL here for easy reference
-const BACKEND_API_URL = 'https://ram-portal-backend.onrender.com/api';
+const BACKEND_API_URL = 'http://127.0.0.1:8000/api';
 
 let currentAdmin = null;
 let adminProfile = null;
@@ -62,7 +62,8 @@ function buildNavigation(role) {
     // Define all possible modules and who can access them
     const modules = [
         { id: 'overview', icon: 'fa-chart-pie', label: 'Overview', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD', 'Lecturer', 'Welfare', 'Placement'] },
-        { id: 'staff', icon: 'fa-users-cog', label: 'Staff Management', roles: ['SuperAdmin'] },
+        // UPDATED: Let Principal & Deputy see Staff Management too
+        { id: 'staff', icon: 'fa-users-cog', label: 'Staff Management', roles: ['SuperAdmin', 'Principal'] },
         { id: 'approvals', icon: 'fa-user-check', label: 'Pending Registrations', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD'] },
         { id: 'academics', icon: 'fa-graduation-cap', label: 'Academics & Results', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD', 'Lecturer'] },
         { id: 'placements', icon: 'fa-hospital-user', label: 'Clinical Placements', roles: ['SuperAdmin', 'Principal', 'Placement'] },
@@ -248,20 +249,24 @@ async function updatePassword(event) {
     }
 }
 
-// --- DATA FETCHERS (SuperAdmin Only) ---
+// --- GLOBAL STAFF MANAGEMENT (SuperAdmin & Principal) ---
+let allStaffData = []; // Store to quickly populate edit modal
+
 async function fetchStaffList() {
-    if (adminProfile.role_level !== 'SuperAdmin') return;
+    if (adminProfile.role_level !== 'SuperAdmin' && adminProfile.role_level !== 'Principal') return;
 
     const tbody = document.getElementById('staff-table-body');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading staff directory...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading staff directory...</td></tr>';
 
     try {
         const { data, error } = await supabaseClient.from('staff_profiles').select('*').order('created_at', { ascending: false });
         if (error) throw error;
+        
+        allStaffData = data;
 
         tbody.innerHTML = '';
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No staff found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No staff found.</td></tr>';
             return;
         }
 
@@ -270,8 +275,14 @@ async function fetchStaffList() {
                 ? '<span class="px-2.5 py-1 bg-green-100 text-green-700 font-bold text-[10px] rounded-full">Active</span>'
                 : '<span class="px-2.5 py-1 bg-red-100 text-red-700 font-bold text-[10px] rounded-full">Disabled</span>';
             
+            // Disable editing yourself to prevent accidental lockouts
+            const isSelf = staff.id === adminProfile.id;
+            const actionBtn = isSelf 
+                ? '<span class="text-[10px] text-gray-400 italic">Current User</span>'
+                : `<button onclick="openEditStaffModal('${staff.id}')" class="text-gray-400 hover:text-ramBlue p-2 transition"><i class="fas fa-edit"></i></button>`;
+
             tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 transition">
+                <tr class="hover:bg-gray-50 transition ${!staff.is_active ? 'opacity-60' : ''}">
                     <td class="px-6 py-4">
                         <p class="font-bold text-gray-800">${staff.full_name}</p>
                         <p class="text-[10px] text-gray-400">${staff.email}</p>
@@ -279,12 +290,101 @@ async function fetchStaffList() {
                     <td class="px-6 py-4 text-xs font-medium text-gray-600 uppercase tracking-wider">${staff.department}</td>
                     <td class="px-6 py-4 font-bold text-adminDark text-xs">${staff.role_level}</td>
                     <td class="px-6 py-4">${statusBadge}</td>
+                    <td class="px-6 py-4 text-right">${actionBtn}</td>
                 </tr>
             `;
         });
     } catch (e) {
         showToast("Failed to load staff list.", "error");
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-500">Error loading data.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Error loading data.</td></tr>';
+    }
+}
+
+// --- NEW: EDIT/DEACTIVATE STAFF ---
+function openEditStaffModal(staffId) {
+    const staff = allStaffData.find(s => s.id === staffId);
+    if (!staff) return;
+
+    // Populate Modal
+    document.getElementById('edit-staff-id').value = staff.id;
+    document.getElementById('edit-staff-name').value = staff.full_name;
+    document.getElementById('edit-staff-email').value = staff.email;
+    document.getElementById('edit-staff-dept').value = staff.department;
+    document.getElementById('edit-staff-role').value = staff.role_level;
+    document.getElementById('edit-staff-status').value = staff.is_active.toString();
+
+    // Show Modal
+    const modal = document.getElementById('editStaffModal');
+    const backdrop = document.getElementById('editStaffModalBackdrop');
+    const box = document.getElementById('editStaffModalBox');
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        backdrop.classList.replace('opacity-0', 'opacity-100');
+        box.classList.replace('scale-90', 'scale-100');
+        box.classList.replace('opacity-0', 'opacity-100');
+    }, 10);
+}
+
+function closeEditStaffModal() {
+    const backdrop = document.getElementById('editStaffModalBackdrop');
+    const box = document.getElementById('editStaffModalBox');
+    
+    backdrop.classList.replace('opacity-100', 'opacity-0');
+    box.classList.replace('scale-100', 'scale-90');
+    box.classList.replace('opacity-100', 'opacity-0');
+    
+    setTimeout(() => {
+        document.getElementById('editStaffModal').classList.add('hidden');
+    }, 300);
+}
+
+async function submitEditStaff(event) {
+    event.preventDefault();
+    const btn = document.getElementById('btn-update-staff');
+    
+    const staffId = document.getElementById('edit-staff-id').value;
+    const isActive = document.getElementById('edit-staff-status').value === "true";
+
+    const payload = {
+        staff_id: staffId,
+        requester_id: currentAdmin.id,
+        full_name: document.getElementById('edit-staff-name').value.trim(),
+        email: document.getElementById('edit-staff-email').value.trim(),
+        department: document.getElementById('edit-staff-dept').value,
+        role_level: document.getElementById('edit-staff-role').value,
+        is_active: isActive
+    };
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Updating...';
+
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/update-staff`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.detail || "Failed to update staff member.");
+
+        showToast(`Staff profile updated successfully.`, "success");
+        closeEditStaffModal();
+        
+        // Refresh based on where they edited from
+        if (adminProfile.role_level === 'SuperAdmin' || adminProfile.role_level === 'Principal') {
+            fetchStaffList(); 
+        } else {
+            fetchDepartmentLecturers();
+        }
+
+    } catch (e) {
+        console.error(e);
+        showToast(e.message || "Failed to update staff member.", "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Update Staff Member";
     }
 }
 
@@ -310,7 +410,7 @@ async function logoutAdmin() {
     window.location.href = "admin-login.html";
 }
 
-// --- STAFF MANAGEMENT LOGIC ---
+// --- STAFF MANAGEMENT LOGIC (Add Modal) ---
 function openStaffModal() {
     const modal = document.getElementById('addStaffModal');
     const backdrop = document.getElementById('staffModalBackdrop');
@@ -515,11 +615,19 @@ async function fetchDepartmentLecturers() {
             return;
         }
 
+        allStaffData = data; // Store locally for editing
+
         list.innerHTML = '';
         data.forEach(lec => {
             const initials = lec.full_name.substring(0, 2).toUpperCase();
+            
+            const statusBadge = lec.is_active 
+                ? '<span class="px-2 py-1 bg-green-100 text-green-700 font-bold text-[10px] rounded-full">Active</span>'
+                : '<span class="px-2 py-1 bg-red-100 text-red-700 font-bold text-[10px] rounded-full">Disabled</span>';
+            
+            // Allow HOD to edit their lecturers
             list.innerHTML += `
-                <div class="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 rounded-xl mb-2">
+                <div class="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 rounded-xl mb-2 ${!lec.is_active ? 'opacity-60' : ''}">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 bg-blue-100 text-ramBlue rounded-full flex items-center justify-center font-bold text-xs">
                             ${initials}
@@ -529,7 +637,10 @@ async function fetchDepartmentLecturers() {
                             <p class="text-[10px] text-gray-400">${lec.email}</p>
                         </div>
                     </div>
-                    <span class="px-2 py-1 bg-green-100 text-green-700 font-bold text-[10px] rounded-full">Active</span>
+                    <div class="flex items-center gap-3">
+                        ${statusBadge}
+                        <button onclick="openEditStaffModal('${lec.id}')" class="text-gray-400 hover:text-ramBlue p-1 transition"><i class="fas fa-edit"></i></button>
+                    </div>
                 </div>
             `;
         });
@@ -1515,6 +1626,8 @@ async function downloadRosterTemplate() {
 
 function openAnnouncementModal() {
     document.getElementById('announcementForm').reset();
+    document.getElementById('ann-id').value = ''; // Clear ID for new posts
+    
     document.getElementById('announcementModal').classList.remove('hidden');
     setTimeout(() => { 
         document.getElementById('announcementBackdrop').classList.replace('opacity-0', 'opacity-100'); 
@@ -1530,36 +1643,118 @@ function closeAnnouncementModal() {
     setTimeout(() => { document.getElementById('announcementModal').classList.add('hidden'); }, 300);
 }
 
-// --- UPDATED: EXTERNAL BACKEND - BROADCAST (Triggers 5-day Expiry Log) ---
+// --- NEW: EDIT ANNOUNCEMENT ---
+function openEditAnnouncementModal(id, title, message, target) {
+    document.getElementById('ann-id').value = id;
+    document.getElementById('ann-title').value = title;
+    document.getElementById('ann-message').value = message;
+    document.getElementById('ann-target').value = target;
+
+    document.getElementById('announcementModal').classList.remove('hidden');
+    setTimeout(() => { 
+        document.getElementById('announcementBackdrop').classList.replace('opacity-0', 'opacity-100'); 
+        document.getElementById('announcementBox').classList.replace('scale-90', 'scale-100'); 
+        document.getElementById('announcementBox').classList.replace('opacity-0', 'opacity-100'); 
+    }, 10);
+}
+
+// --- NEW: DELETE ANNOUNCEMENT (Soft Delete) ---
+async function deleteAnnouncement(id) {
+    if (!confirm("Are you sure you want to delete this announcement?")) return;
+
+    // Optimistic UI Update: instantly fade and prevent further clicks
+    const card = document.getElementById(`ann-${id}`);
+    if (card) {
+        card.style.opacity = '0.5';
+        card.style.pointerEvents = 'none';
+    }
+
+    try {
+        const payload = {
+            announcement_id: id,
+            requester_id: adminProfile.auth_id
+        };
+
+        const response = await fetch(`${BACKEND_API_URL}/delete-announcement`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.detail || "Failed to delete announcement.");
+        
+        showToast("Announcement deleted.", "success");
+        
+        if (card) card.remove(); // Remove immediately for snappy feel
+        
+        // If it was the last one, we want to show the empty state
+        const feed = document.getElementById('announcements-feed');
+        if (feed && feed.children.length === 0) {
+            fetchAnnouncements(); 
+        }
+    } catch (e) {
+        if (card) {
+            card.style.opacity = '1';
+            card.style.pointerEvents = 'auto';
+        }
+        showToast(e.message, "error");
+        console.error(e);
+    }
+}
+
+// --- UPDATED: EXTERNAL BACKEND - BROADCAST (Handles Both Create and Edit) ---
 async function submitAnnouncement(event) {
     event.preventDefault();
     const btn = document.getElementById('btn-save-announcement');
+    const annId = document.getElementById('ann-id').value; // Check if we are editing
     const title = document.getElementById('ann-title').value.trim();
     const message = document.getElementById('ann-message').value.trim();
-    
-    // RESTORED: Target audience value properly retrieved from the UI dropdown
     const targetDropdown = document.getElementById('ann-target');
     const target = targetDropdown ? targetDropdown.value : 'All Students';
 
     btn.disabled = true; 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Broadcasting...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
 
     try {
-        const response = await fetch(`${BACKEND_API_URL}/create-announcement`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        if (annId) {
+            // EDIT EXISTING ANNOUNCEMENT (Via Backend for Authorization)
+            const payload = {
+                announcement_id: annId,
                 title: title,
                 message: message,
-                target_audience: target, // Added back so the backend knows who to send it to
-                staff_id: currentAdmin.id 
-            })
-        });
+                target_audience: target,
+                requester_id: adminProfile.auth_id 
+            };
 
-        const data = await response.json();
-        if (!response.ok || !data.success) throw new Error(data.detail || "Broadcast failed.");
+            const response = await fetch(`${BACKEND_API_URL}/edit-announcement`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        showToast("Announcement successfully sent and logged!", "success");
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.detail || "Failed to edit announcement.");
+            showToast("Announcement updated successfully!", "success");
+
+        } else {
+            // CREATE NEW ANNOUNCEMENT (Via Backend)
+            const response = await fetch(`${BACKEND_API_URL}/create-announcement`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title,
+                    message: message,
+                    target_audience: target,
+                    staff_id: currentAdmin.id 
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.detail || "Broadcast failed.");
+            showToast("Announcement successfully sent!", "success");
+        }
+
         closeAnnouncementModal();
         fetchAnnouncements(); // Refresh the feed immediately
     } catch (e) { 
@@ -1577,8 +1772,6 @@ async function fetchAnnouncements() {
     feed.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-gray-300"></i></div>';
 
     try {
-        // Fetch announcements and join with staff_profiles to get the author's real name
-        // PERFECTLY matching your global_announcements table
         const { data, error } = await supabaseClient
             .from('global_announcements') 
             .select('*, staff_profiles(full_name)')
@@ -1604,9 +1797,27 @@ async function fetchAnnouncements() {
                 ? '<span class="bg-blue-100 text-ramBlue px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase">Global</span>'
                 : `<span class="bg-ramGold/20 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase">${ann.target_audience}</span>`;
 
+            // NEW: Scoped Permissions for Edit/Delete Buttons
+            let actionButtons = '';
+            if (adminProfile.role_level === 'SuperAdmin' || adminProfile.role_level === 'Principal' || ann.posted_by === currentAdmin.id) {
+                // Escape single quotes in the message string so they don't break the onclick handler
+                const safeMessage = ann.message.replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, "\\n");
+                const safeTitle = ann.title.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                
+                actionButtons = `
+                    <div class="flex gap-2">
+                        <button onclick="openEditAnnouncementModal('${ann.id}', '${safeTitle}', '${safeMessage}', '${ann.target_audience || 'All Students'}')" class="text-gray-400 hover:text-ramBlue p-1 transition" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteAnnouncement('${ann.id}')" class="text-gray-400 hover:text-ramRed p-1 transition" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+            }
+
             return `
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                    <div class="flex justify-between items-start mb-4">
+                <div id="ann-${ann.id}" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 relative">
+                    <div class="absolute top-4 right-4">
+                        ${actionButtons}
+                    </div>
+                    <div class="flex justify-between items-start mb-4 pr-16">
                         <div>
                             <h4 class="text-lg font-bold text-gray-800">${ann.title}</h4>
                             <p class="text-[10px] text-gray-400 mt-1">Posted by <span class="font-bold">${author}</span> on ${date}</p>
