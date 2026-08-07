@@ -114,6 +114,7 @@
                                     <th class="px-6 py-4">Department</th>
                                     <th class="px-6 py-4">Role</th>
                                     <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="staff-table-body" class="text-sm divide-y divide-gray-100">
@@ -414,6 +415,65 @@
         </div>
     </div>
 
+    <div id="editStaffModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-adminDark/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="editStaffModalBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 transform scale-90 opacity-0 transition-all duration-300" id="editStaffModalBox">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Edit Staff Member</h3>
+                <button onclick="closeEditStaffModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <form id="editStaffForm" onsubmit="submitEditStaff(event)" class="space-y-4">
+                <input type="hidden" id="edit-staff-id">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Full Name</label>
+                        <input type="text" id="edit-staff-name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Work Email</label>
+                        <input type="email" id="edit-staff-email" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Department</label>
+                        <select id="edit-staff-dept" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                            <option value="Academics">Academics</option>
+                            <option value="Welfare">Welfare</option>
+                            <option value="Placement">Clinical Placement</option>
+                            <option value="Executive">Executive</option>
+                            <option value="IT">IT Support</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Role Level</label>
+                        <select id="edit-staff-role" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                            <option value="Lecturer">Lecturer</option>
+                            <option value="HOD">HOD</option>
+                            <option value="Welfare">Welfare Officer</option>
+                            <option value="Placement">Placement Officer</option>
+                            <option value="Principal">Principal / Deputy</option>
+                            <option value="SuperAdmin">SuperAdmin</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Account Status</label>
+                    <select id="edit-staff-status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-adminDark" required>
+                        <option value="true">Active (Can Login)</option>
+                        <option value="false">Disabled (Suspended)</option>
+                    </select>
+                </div>
+
+                <button type="submit" id="btn-update-staff" class="w-full bg-adminDark text-white font-bold py-4 mt-2 rounded-xl shadow-lg hover:bg-slate-800 transition transform active:scale-95">Update Staff Member</button>
+            </form>
+        </div>
+    </div>
+
     <div id="hodLecturerModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
         <div class="absolute inset-0 bg-adminDark/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="hodLecBackdrop"></div>
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 transform scale-90 opacity-0 transition-all duration-300" id="hodLecBox">
@@ -581,6 +641,7 @@
             </div>
             
             <form id="announcementForm" onsubmit="submitAnnouncement(event)" class="space-y-4">
+                <input type="hidden" id="ann-id">
                 <div>
                     <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Target Audience</label>
                     <select id="ann-target" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue" required>
