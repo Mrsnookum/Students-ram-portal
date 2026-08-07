@@ -123,6 +123,36 @@
                 </div>
             </div>
 
+            <!-- NEW: STUDENT REGISTRATION APPROVALS SECTION -->
+            <div id="section-approvals" class="admin-section hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">Pending Registrations</h3>
+                        <p class="text-xs text-gray-500 mt-1">Review and approve new student accounts to grant them portal access.</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-4">Student Name</th>
+                                    <th class="px-6 py-4">Admission No.</th>
+                                    <th class="px-6 py-4">Block / Status</th>
+                                    <th class="px-6 py-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pending-students-tbody" class="text-sm divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="4" class="px-6 py-8 text-center text-gray-500 text-sm italic">Loading pending registrations...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- END NEW SECTION -->
+
             <div id="section-academics" class="admin-section hidden space-y-6">
                 
                 <div id="lecturer-view" class="hidden space-y-6">
@@ -411,50 +441,132 @@
     </div>
 
     <div id="gradebookModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
-        <div class="absolute inset-0 bg-adminDark/80 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="gradebookBackdrop"></div>
-        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col transform scale-90 opacity-0 transition-all duration-300" id="gradebookBox">
+    <div class="absolute inset-0 bg-adminDark/80 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="gradebookBackdrop"></div>
+    <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col transform scale-90 opacity-0 transition-all duration-300" id="gradebookBox">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center p-6 border-b border-gray-100 shrink-0 flex-wrap gap-4">
+            <div>
+                <h3 class="text-xl font-bold text-gray-800" id="gb-unit-title">Results Staging Area</h3>
+                <p class="text-xs font-bold text-ramGold uppercase tracking-wider mt-1" id="gb-block-title">Review Uploaded Excel Data</p>
+            </div>
             
-            <div class="flex justify-between items-center p-6 border-b border-gray-100 shrink-0 flex-wrap gap-4">
-                <div>
-                    <h3 class="text-xl font-bold text-gray-800" id="gb-unit-title">Unit Name</h3>
-                    <p class="text-xs font-bold text-ramGold uppercase tracking-wider mt-1" id="gb-block-title">Block X</p>
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- EXCEL BUTTONS -->
+                <button onclick="downloadRosterTemplate()" class="bg-green-50 text-green-700 px-4 py-2 rounded-xl font-bold text-xs hover:bg-green-100 transition border border-green-200 shadow-sm flex items-center">
+                    <i class="fas fa-download mr-1.5"></i> Template
+                </button>
+                
+                <div class="relative cursor-pointer">
+                    <input type="file" id="file-input" accept=".xlsx, .csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Upload Excel Roster">
+                    <button class="bg-blue-50 text-ramBlue px-4 py-2 rounded-xl font-bold text-xs hover:bg-blue-100 transition border border-blue-200 shadow-sm flex items-center pointer-events-none">
+                        <i class="fas fa-upload mr-1.5"></i> Upload
+                    </button>
                 </div>
                 
-                <div class="flex items-center gap-2">
-                    <input type="text" id="supp-adm-input" placeholder="Add Adm No. (e.g. 894/24)" class="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-ramBlue w-56 placeholder-gray-400">
-                    <button onclick="addSupplementaryStudent()" class="bg-blue-50 text-ramBlue px-4 py-2 rounded-xl font-bold text-xs hover:bg-blue-100 transition border border-blue-100 shadow-sm">
-                        <i class="fas fa-plus mr-1"></i> Add Retake
-                    </button>
-                    <button onclick="closeGradebookModal()" class="text-gray-400 hover:text-red-500 transition ml-2 bg-gray-50 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+                <div class="hidden md:block w-px h-6 bg-gray-200 mx-1"></div>
+
+                <!-- Keep Add Retake just in case they need to add a missing student to the upload -->
+                <input type="text" id="supp-adm-input" placeholder="Missing Adm No." class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-ramBlue w-32 placeholder-gray-400">
+                <button onclick="addSupplementaryStudent()" class="bg-gray-50 text-gray-600 px-3 py-2 rounded-xl font-bold text-xs hover:bg-gray-200 transition border border-gray-200 shadow-sm">
+                    <i class="fas fa-plus"></i> Add
+                </button>
+
+                <button onclick="closeGradebookModal()" class="text-gray-400 hover:text-red-500 transition ml-2 bg-gray-50 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+
+        <!-- Grade Legend (Updated with DNS) -->
+        <div class="bg-blue-50 px-6 py-3 flex gap-4 text-xs font-medium text-blue-800 shrink-0 border-b border-blue-100 flex-wrap">
+            <span class="flex items-center"><i class="fas fa-times-circle mr-2 text-red-400"></i> Fail: 0-59</span>
+            <span class="flex items-center"><i class="fas fa-info-circle mr-2 text-yellow-500"></i> Pass: 60-69</span>
+            <span class="flex items-center"><i class="fas fa-medal mr-2 text-blue-500"></i> Credit: 70-79</span>
+            <span class="flex items-center"><i class="fas fa-trophy mr-2 text-green-500"></i> Distinction: 80-100</span>
+            <span class="flex items-center ml-auto bg-white px-2 py-1 rounded text-gray-500"><i class="fas fa-user-slash mr-2"></i> DNS: Did Not Sit</span>
+        </div>
+
+        <!-- Staging Table -->
+        <div class="p-6 flex-1 overflow-y-auto no-scrollbar">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-[10px] font-black text-gray-500 uppercase tracking-widest sticky top-0 z-10 shadow-sm">
+                    <tr>
+                        <th class="px-4 py-3 rounded-tl-lg">Adm No.</th>
+                        <th class="px-4 py-3">Student Name</th>
+                        <th class="px-4 py-3 w-32 text-center">Uploaded Score</th>
+                        <th class="px-4 py-3 w-32 rounded-tr-lg">Calculated Grade</th>
+                    </tr>
+                </thead>
+                <tbody id="gradebook-tbody" class="text-sm divide-y divide-gray-50">
+                    <!-- Javascript will inject the parsed Excel rows here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-6 border-t border-gray-100 bg-gray-50 rounded-b-3xl flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-100 text-ramBlue rounded-full flex items-center justify-center">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-800" id="ui-student-count">0/0 Students Accounted For</p>
+                    <p class="text-[10px] text-gray-500">100% Match Required for Submission</p>
                 </div>
             </div>
+            <button onclick="submitGrades()" id="btn-submit-grades" class="bg-ramGreen text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                Submit to HOD
+            </button>
+        </div>
+    </div>
+</div>
 
-            <div class="bg-blue-50 px-6 py-3 flex gap-4 text-xs font-medium text-blue-800 shrink-0 border-b border-blue-100">
-                <span class="flex items-center"><i class="fas fa-info-circle mr-2"></i> Pass: 60-69</span>
-                <span class="flex items-center"><i class="fas fa-medal mr-2"></i> Credit: 70-79</span>
-                <span class="flex items-center"><i class="fas fa-trophy mr-2"></i> Distinction: 80-100</span>
+    <div id="hodReviewModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-adminDark/80 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="hodReviewBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col transform scale-90 opacity-0 transition-all duration-300" id="hodReviewBox">
+            
+            <!-- Header -->
+            <div class="flex justify-between items-center p-6 border-b border-gray-100 shrink-0 flex-wrap gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800" id="hod-review-unit-title">Review Unit Results</h3>
+                    <p class="text-xs font-bold text-ramGold uppercase tracking-wider mt-1" id="hod-review-block-title">Block</p>
+                </div>
+                
+                <button onclick="closeHodReviewModal()" class="text-gray-400 hover:text-red-500 transition ml-2 bg-gray-50 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
             </div>
 
+            <!-- Grade Legend -->
+            <div class="bg-blue-50 px-6 py-3 flex gap-4 text-xs font-medium text-blue-800 shrink-0 border-b border-blue-100 flex-wrap">
+                <span class="flex items-center"><i class="fas fa-times-circle mr-2 text-red-400"></i> Fail: 0-59</span>
+                <span class="flex items-center"><i class="fas fa-info-circle mr-2 text-yellow-500"></i> Pass: 60-69</span>
+                <span class="flex items-center"><i class="fas fa-medal mr-2 text-blue-500"></i> Credit: 70-79</span>
+                <span class="flex items-center"><i class="fas fa-trophy mr-2 text-green-500"></i> Distinction: 80-100</span>
+                <span class="flex items-center ml-auto bg-white px-2 py-1 rounded text-gray-500"><i class="fas fa-user-slash mr-2"></i> DNS: Did Not Sit</span>
+            </div>
+
+            <!-- Staging Table -->
             <div class="p-6 flex-1 overflow-y-auto no-scrollbar">
                 <table class="w-full text-left">
                     <thead class="bg-gray-50 text-[10px] font-black text-gray-500 uppercase tracking-widest sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th class="px-4 py-3 rounded-tl-lg">Student</th>
-                            <th class="px-4 py-3 w-24">CAT</th>
-                            <th class="px-4 py-3 w-24">Exam</th>
-                            <th class="px-4 py-3 w-24 text-center">Total</th>
-                            <th class="px-4 py-3 rounded-tr-lg">Grade</th>
+                            <th class="px-4 py-3 rounded-tl-lg">Adm No.</th>
+                            <th class="px-4 py-3">Student Name</th>
+                            <th class="px-4 py-3 w-32 text-center">Score (Edit)</th>
+                            <th class="px-4 py-3 w-32 rounded-tr-lg">Calculated Grade</th>
                         </tr>
                     </thead>
-                    <tbody id="gradebook-tbody" class="text-sm divide-y divide-gray-50">
-                        </tbody>
+                    <tbody id="hod-review-tbody" class="text-sm divide-y divide-gray-50">
+                        <!-- Javascript will inject the pending rows here -->
+                    </tbody>
                 </table>
             </div>
 
+            <!-- Footer -->
             <div class="p-6 border-t border-gray-100 bg-gray-50 rounded-b-3xl flex justify-between items-center shrink-0">
-                <p class="text-xs text-gray-500"><i class="fas fa-lock mr-1"></i> Results will be sent to HOD for approval.</p>
-                <button onclick="submitGrades()" id="btn-submit-grades" class="bg-ramGreen text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 transition transform active:scale-95">
-                    Submit to HOD
+                <button onclick="hodSubmitBatch('Rejected')" id="btn-reject-batch" class="bg-white text-red-600 border border-red-200 px-6 py-3 rounded-xl font-bold shadow-sm hover:bg-red-50 transition transform active:scale-95">
+                    <i class="fas fa-times mr-2"></i> Reject Batch
+                </button>
+                <button onclick="hodSubmitBatch('Approved')" id="btn-approve-batch" class="bg-ramGreen text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 transition transform active:scale-95">
+                    Approve & Publish <i class="fas fa-check ml-2"></i>
                 </button>
             </div>
         </div>
@@ -538,6 +650,8 @@
 
     <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[400px] z-[100] hidden transition-all duration-300 pointer-events-none"></div>
 
+    <!-- SheetJS for Excel Uploads & Downloads -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="admin-dashboard.js"></script>
     <script>
