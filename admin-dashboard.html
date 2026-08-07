@@ -92,7 +92,10 @@
                     </div>
 
                 <div class="mt-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                    <h3 class="font-bold text-gray-800 mb-4"><i class="fas fa-bolt mr-2 text-ramGold"></i> Live Dashboard Activity</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-gray-800"><i class="fas fa-bolt mr-2 text-ramGold"></i> Live Dashboard Activity</h3>
+                        <button id="btn-view-audit" onclick="openAuditModal()" class="hidden text-xs font-bold text-adminDark bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition shadow-sm"><i class="fas fa-clipboard-list mr-2"></i> View Audit Trail</button>
+                    </div>
                     <div id="activity-feed" class="space-y-3">
                         <p class="text-sm text-gray-400 italic">Loading activity stream...</p>
                     </div>
@@ -706,6 +709,40 @@
                     Confirm Placement
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- NEW: AUDIT LOG MODAL -->
+    <div id="auditLogModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-adminDark/80 backdrop-blur-sm opacity-0 transition-opacity duration-300" id="auditLogBackdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col transform scale-90 opacity-0 transition-all duration-300" id="auditLogBox">
+            
+            <div class="flex justify-between items-center p-6 border-b border-gray-100 shrink-0 flex-wrap gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-shield-alt mr-2 text-adminDark"></i> System Audit Trail</h3>
+                    <p class="text-xs font-bold text-ramGold uppercase tracking-wider mt-1">SuperAdmin & Principal Access Only</p>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <select id="audit-filter" onchange="fetchFullAuditLogs()" class="bg-gray-50 border border-gray-200 text-gray-700 px-3 py-2 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-adminDark">
+                        <option value="ALL">All Actions</option>
+                        <option value="AUTH">Auth & Staff</option>
+                        <option value="GRADES">Grades & Approvals</option>
+                        <option value="ANNOUNCEMENTS">Announcements</option>
+                    </select>
+                    <button onclick="fetchFullAuditLogs()" class="bg-gray-100 text-gray-600 px-3 py-2 rounded-xl font-bold text-xs hover:bg-gray-200 transition border border-gray-200 shadow-sm">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button onclick="closeAuditModal()" class="text-gray-400 hover:text-red-500 transition ml-2 bg-gray-50 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="p-6 flex-1 overflow-y-auto no-scrollbar bg-gray-50/50" id="audit-log-feed">
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-3xl text-gray-300 mb-4"></i>
+                    <p class="text-sm text-gray-500 italic">Fetching secure logs...</p>
+                </div>
+            </div>
         </div>
     </div>
 
