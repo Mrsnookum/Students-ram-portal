@@ -16,6 +16,7 @@ let adminProfile = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeAdminDashboard();
+    setupDropzone();
 });
 
 // --- INITIALIZATION & RBAC LOGIC ---
@@ -62,6 +63,7 @@ function buildNavigation(role) {
     const modules = [
         { id: 'overview', icon: 'fa-chart-pie', label: 'Overview', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD', 'Lecturer', 'Welfare', 'Placement'] },
         { id: 'staff', icon: 'fa-users-cog', label: 'Staff Management', roles: ['SuperAdmin'] },
+        { id: 'approvals', icon: 'fa-user-check', label: 'Pending Registrations', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD'] },
         { id: 'academics', icon: 'fa-graduation-cap', label: 'Academics & Results', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD', 'Lecturer'] },
         { id: 'placements', icon: 'fa-hospital-user', label: 'Clinical Placements', roles: ['SuperAdmin', 'Principal', 'Placement'] },
         { id: 'welfare', icon: 'fa-headset', label: 'Student Welfare', roles: ['SuperAdmin', 'Principal', 'Welfare'] },
@@ -106,6 +108,7 @@ function showAdminSection(sectionId) {
     const titles = {
         'overview': 'Dashboard Overview',
         'staff': 'Staff Management',
+        'approvals': 'Pending Student Registrations',
         'academics': 'Academic Control Center',
         'placements': 'Clinical Placement Manager',
         'welfare': 'Student Welfare Desk',
@@ -117,6 +120,7 @@ function showAdminSection(sectionId) {
     // TRIGGER DATA FETCHES
     if (sectionId === 'overview') loadDynamicOverview();
     if (sectionId === 'staff') fetchStaffList();
+    if (sectionId === 'approvals') fetchPendingRegistrations();
     if (sectionId === 'academics') renderAcademicsModule();
     if (sectionId === 'announcements') fetchAnnouncements(); 
     if (sectionId === 'placements') fetchPlacementStudents();
@@ -141,6 +145,8 @@ function renderAcademicsModule() {
         fetchDepartmentLecturers();
         // Fetch pending results for HOD approval
         fetchPendingApprovals();
+        // Fetch approval history
+        fetchHodHistory();
     }
 }
 
@@ -377,6 +383,87 @@ async function submitNewStaff(event) {
     }
 }
 
+// ==========================================
+// STUDENT REGISTRATION APPROVALS LOGIC
+// ==========================================
+
+async function fetchPendingRegistrations() {
+    const tbody = document.getElementById('pending-students-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading pending registrations...</td></tr>';
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('students')
+            .select('auth_id, first_name, last_name, admission_number, block, course')
+            .eq('is_approved', false)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-green-500"><i class="fas fa-check-circle mr-2 text-lg"></i>No pending student registrations.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach(student => {
+            const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 font-bold text-gray-800">${fullName}</td>
+                    <td class="px-6 py-4 text-xs font-mono text-gray-500">${student.admission_number}</td>
+                    <td class="px-6 py-4 text-xs">
+                        <span class="font-bold text-ramBlue uppercase">${student.block}</span><br>
+                        <span class="text-[10px] text-gray-400">${student.course}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="approveStudentRegistration('${student.auth_id}', this)" class="text-xs font-bold text-white bg-ramGreen hover:bg-green-700 px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-2 ml-auto">
+                            <span>Approve</span> <i class="fas fa-check"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-red-500">Failed to load pending registrations.</td></tr>';
+        console.error("Fetch pending students error:", e);
+    }
+}
+
+async function approveStudentRegistration(authId, btnElement) {
+    const originalHTML = btnElement.innerHTML;
+    
+    // Trigger Loading Animation
+    btnElement.disabled = true;
+    btnElement.innerHTML = '<span>Approving...</span> <i class="fas fa-spinner fa-spin"></i>';
+    btnElement.classList.replace('bg-ramGreen', 'bg-gray-400');
+    btnElement.classList.replace('hover:bg-green-700', 'hover:bg-gray-400');
+
+    try {
+        const { error } = await supabaseClient
+            .from('students')
+            .update({ is_approved: true })
+            .eq('auth_id', authId);
+
+        if (error) throw error;
+
+        showToast("Student registration approved!", "success");
+        fetchPendingRegistrations(); // Refresh list immediately
+
+    } catch (e) {
+        showToast("Failed to approve student.", "error");
+        console.error("Approve student error:", e);
+        
+        // Revert Button on Error
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalHTML;
+        btnElement.classList.replace('bg-gray-400', 'bg-ramGreen');
+        btnElement.classList.replace('hover:bg-gray-400', 'hover:bg-green-700');
+    }
+}
+
 // --- HOD LECTURER MANAGEMENT ---
 function openHodLecturerModal() {
     const modal = document.getElementById('hodLecturerModal');
@@ -546,9 +633,9 @@ async function fetchPendingApprovals() {
                         <p class="text-sm font-bold text-gray-800">${group.unit}</p>
                         <p class="text-[10px] text-gray-500">${group.count} student result(s) waiting</p>
                     </div>
-                    <!-- PASSING 'this' TO TARGET THE SPECIFIC BUTTON -->
-                    <button onclick="approveResults('${group.block}', '${group.unit}', this)" class="text-xs font-bold text-white bg-ramGreen hover:bg-green-700 px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-2">
-                        <span>Approve</span> <i class="fas fa-check"></i>
+                    <!-- CHANGED FROM 'Approve' to 'Review Results' -->
+                    <button onclick="openHodReviewModal('${group.block}', '${group.unit}')" class="text-xs font-bold text-ramBlue bg-blue-50 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-2">
+                        <span>Review Results</span> <i class="fas fa-arrow-right"></i>
                     </button>
                 </div>
             `;
@@ -559,44 +646,228 @@ async function fetchPendingApprovals() {
     }
 }
 
-// --- UPDATED: EXTERNAL BACKEND - APPROVE RESULTS (With Animation) ---
-async function approveResults(blockName, unitName, btnElement) {
-    // 1. Save original button state to revert on failure
-    const originalHTML = btnElement.innerHTML;
+// --- NEW HOD REVIEW MODAL LOGIC ---
+let currentHodReviewSession = { block: '', unit: '' };
+
+async function openHodReviewModal(blockName, unitName) {
+    currentHodReviewSession = { block: blockName, unit: unitName };
     
-    // 2. Trigger Loading Animation
-    btnElement.disabled = true;
-    btnElement.innerHTML = '<span>Approving...</span> <i class="fas fa-spinner fa-spin"></i>';
-    btnElement.classList.replace('bg-ramGreen', 'bg-gray-400');
-    btnElement.classList.replace('hover:bg-green-700', 'hover:bg-gray-400');
+    document.getElementById('hod-review-unit-title').innerText = "Review Results: " + unitName;
+    document.getElementById('hod-review-block-title').innerText = blockName;
+    
+    const modal = document.getElementById('hodReviewModal');
+    const backdrop = document.getElementById('hodReviewBackdrop');
+    const box = document.getElementById('hodReviewBox');
+    const tbody = document.getElementById('hod-review-tbody');
+
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Fetching pending results from database...</td></tr>';
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        backdrop.classList.replace('opacity-0', 'opacity-100');
+        box.classList.replace('scale-90', 'scale-100');
+        box.classList.replace('opacity-0', 'opacity-100');
+    }, 10);
 
     try {
+        const { data, error } = await supabaseClient
+            .from('exam_results')
+            .select('student_name, admission_number, total_score, grade')
+            .eq('block_name', blockName)
+            .eq('unit_name', unitName)
+            .eq('status', 'Pending')
+            .order('student_name', { ascending: true });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-green-500">No pending results found for this unit.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach((student, index) => {
+            const scoreDisplay = student.grade === 'DNS' ? 'DNS' : student.total_score;
+            
+            // Re-use the existing calculateGrade logic to get the right color badges
+            const gradeData = calculateGrade(String(scoreDisplay));
+            const badgeHTML = `<span class="px-3 py-1 rounded-full text-[10px] font-bold ${gradeData.bg} ${gradeData.color}">${gradeData.label}</span>`;
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 transition hod-review-row" data-adm="${student.admission_number}" data-name="${student.student_name}">
+                    <td class="px-4 py-4">
+                        <p class="text-[10px] text-gray-500 font-mono">${student.admission_number}</p>
+                    </td>
+                    <td class="px-4 py-4 font-bold text-gray-800">${student.student_name}</td>
+                    <td class="px-4 py-4 text-center">
+                        <input type="text" value="${scoreDisplay}" class="review-score-input w-24 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-center focus:ring-2 focus:ring-ramBlue outline-none transition mx-auto" oninput="updateHodRowGrade(this, ${index})">
+                    </td>
+                    <td class="px-4 py-4" id="hod-grade-label-${index}">
+                        ${badgeHTML}
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-red-500">Error loading results.</td></tr>';
+        console.error(e);
+    }
+}
+
+function updateHodRowGrade(inputElement, rowIndex) {
+    const gradeData = calculateGrade(inputElement.value);
+    const gradeCell = document.getElementById(`hod-grade-label-${rowIndex}`);
+    
+    if (!gradeData) {
+        gradeCell.innerHTML = `<span class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400">Invalid</span>`;
+    } else {
+        gradeCell.innerHTML = `<span class="px-3 py-1 rounded-full text-[10px] font-bold ${gradeData.bg} ${gradeData.color}">${gradeData.label}</span>`;
+    }
+}
+
+function closeHodReviewModal() {
+    const backdrop = document.getElementById('hodReviewBackdrop');
+    const box = document.getElementById('hodReviewBox');
+    
+    backdrop.classList.replace('opacity-100', 'opacity-0');
+    box.classList.replace('scale-100', 'scale-90');
+    box.classList.replace('opacity-100', 'opacity-0');
+    
+    setTimeout(() => {
+        document.getElementById('hodReviewModal').classList.add('hidden');
+    }, 300);
+}
+
+// --- UPDATED: BATCH SUBMISSION TO EXTERNAL BACKEND ---
+async function hodSubmitBatch(action) {
+    const approveBtn = document.getElementById('btn-approve-batch');
+    const rejectBtn = document.getElementById('btn-reject-batch');
+    
+    // Disable buttons
+    approveBtn.disabled = true;
+    rejectBtn.disabled = true;
+    
+    const originalText = action === 'Approved' ? approveBtn.innerHTML : rejectBtn.innerHTML;
+    
+    if (action === 'Approved') {
+        approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Approving...';
+    } else {
+        rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Rejecting...';
+    }
+
+    try {
+        const rows = document.querySelectorAll('.hod-review-row');
+        const editedGrades = [];
+
+        // If Approved, package up any edits the HOD made so the backend can overwrite them
+        if (action === 'Approved') {
+            rows.forEach(row => {
+                const val = row.querySelector('.review-score-input').value.trim().toUpperCase();
+                const isDns = val === 'DNS';
+                const score = isDns ? 0 : (parseFloat(val) || 0);
+
+                editedGrades.push({
+                    admission_number: row.getAttribute('data-adm'),
+                    exam_score: score, 
+                    is_dns: isDns
+                });
+            });
+        }
+
         const response = await fetch(`${BACKEND_API_URL}/approve-results`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                block_name: blockName,
-                unit_name: unitName,
-                action: 'Approve',
-                staff_id: adminProfile.id
+                block_name: currentHodReviewSession.block,
+                unit_name: currentHodReviewSession.unit,
+                action: action === 'Approved' ? 'Approve' : 'Reject',
+                staff_id: adminProfile.id,
+                edited_grades: editedGrades.length > 0 ? editedGrades : null // Send edits if any
             })
         });
 
         const data = await response.json();
-        if (!response.ok || !data.success) throw new Error(data.detail || "Failed to approve results.");
+        if (!response.ok || !data.success) throw new Error(data.detail || `Failed to ${action.toLowerCase()} results.`);
         
-        showToast(`Results for ${unitName} approved!`, "success");
-        fetchPendingApprovals(); // Refresh list
+        showToast(`Results for ${currentHodReviewSession.unit} successfully ${action.toLowerCase()}!`, "success");
+        
+        closeHodReviewModal();
+        fetchPendingApprovals(); // Refresh the pending list
+        fetchHodHistory(); // Refresh the log
         loadActivityFeed(adminProfile.role_level);
+        
     } catch (e) {
         showToast(e.message, "error");
         console.error(e);
         
-        // 3. Revert Button on Error
-        btnElement.disabled = false;
-        btnElement.innerHTML = originalHTML;
-        btnElement.classList.replace('bg-gray-400', 'bg-ramGreen');
-        btnElement.classList.replace('hover:bg-gray-400', 'hover:bg-green-700');
+        // Revert Buttons
+        if (action === 'Approved') {
+            approveBtn.innerHTML = originalText;
+        } else {
+            rejectBtn.innerHTML = originalText;
+        }
+        approveBtn.disabled = false;
+        rejectBtn.disabled = false;
+    }
+}
+
+// --- NEW: FETCH HOD HISTORY LOG ---
+async function fetchHodHistory() {
+    const list = document.getElementById('hod-history-list');
+    if (!list) return;
+
+    list.innerHTML = '<p class="text-sm text-gray-400 italic">Loading history...</p>';
+
+    try {
+        // Fetch recently approved or rejected results
+        // FIX: Changed 'updated_at' to 'created_at' to match Supabase defaults
+        const { data: results, error } = await supabaseClient
+            .from('exam_results')
+            .select('block_name, unit_name, status, created_at')
+            .in('status', ['Approved', 'Rejected'])
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!results || results.length === 0) {
+            list.innerHTML = '<p class="text-sm text-gray-400 italic">No approval history found.</p>';
+            return;
+        }
+
+        // We only want to show one log per unit, so we group them
+        const historyGroups = {};
+        results.forEach(r => {
+            const key = `${r.block_name}_${r.unit_name}_${r.status}`;
+            if (!historyGroups[key]) {
+                historyGroups[key] = { 
+                    block: r.block_name, 
+                    unit: r.unit_name, 
+                    status: r.status,
+                    // FIX: Point date formatting to created_at
+                    date: new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                };
+            }
+        });
+
+        list.innerHTML = '';
+        Object.values(historyGroups).forEach(group => {
+            const isApproved = group.status === 'Approved';
+            const icon = isApproved ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500';
+            const bgColor = isApproved ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100';
+            
+            list.innerHTML += `
+                <div class="flex items-center gap-4 p-3 rounded-xl border ${bgColor} mb-2">
+                    <i class="fas ${icon} text-lg shrink-0"></i>
+                    <div>
+                        <p class="text-sm font-bold text-gray-800">${group.unit} <span class="text-xs font-normal text-gray-500">(${group.block})</span></p>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">${group.status} on ${group.date}</p>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (e) {
+        list.innerHTML = '<p class="text-sm text-red-500">Error loading history.</p>';
+        console.error(e);
     }
 }
 
@@ -740,16 +1011,16 @@ function createMetricCard(title, value, icon, colorClass) {
 }
 
 // ==========================================
-// LECTURER GRADEBOOK & AUTO-CALCULATOR
+// LECTURER GRADEBOOK & AUTO-CALCULATOR (STAGING AREA)
 // ==========================================
 
 let currentGradingSession = { block: '', unit: '' };
+let totalStudentsExpected = 0;
 
-// --- UPDATED: EXTERNAL BACKEND - SMART GRADE FILTERING ---
 async function openGradebook(blockName, unitName) {
     currentGradingSession = { block: blockName, unit: unitName };
     
-    document.getElementById('gb-unit-title').innerText = unitName;
+    document.getElementById('gb-unit-title').innerText = "Results Staging Area: " + unitName;
     document.getElementById('gb-block-title').innerText = blockName;
     
     const modal = document.getElementById('gradebookModal');
@@ -757,7 +1028,11 @@ async function openGradebook(blockName, unitName) {
     const box = document.getElementById('gradebookBox');
     const tbody = document.getElementById('gradebook-tbody');
 
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading ungraded students...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading roster for staging...</td></tr>';
+    
+    // Reset 100% Math Counter
+    totalStudentsExpected = 0;
+    updateMatchCounter();
 
     modal.classList.remove('hidden');
     setTimeout(() => {
@@ -767,7 +1042,8 @@ async function openGradebook(blockName, unitName) {
     }, 10);
 
     try {
-        // Fetch ONLY students who have not yet received a grade for this specific unit
+        // Fetch ungraded students to populate the staging area 
+        // (This simulates an Excel Template being mapped and loaded)
         const response = await fetch(`${BACKEND_API_URL}/ungraded-students/${blockName}/${unitName}`);
         const resData = await response.json();
 
@@ -776,9 +1052,12 @@ async function openGradebook(blockName, unitName) {
         const students = resData.students;
 
         if (!students || students.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-green-500">All students in ' + blockName + ' have been graded for this unit.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-green-500">All students in ' + blockName + ' have been graded for this unit.</td></tr>';
             return;
         }
+
+        totalStudentsExpected = students.length;
+        updateMatchCounter();
 
         tbody.innerHTML = '';
         students.forEach((student, index) => {
@@ -788,23 +1067,82 @@ async function openGradebook(blockName, unitName) {
             tbody.innerHTML += `
                 <tr class="hover:bg-gray-50 transition student-row" data-adm="${admNumber}" data-name="${fullName}">
                     <td class="px-4 py-4">
-                        <p class="font-bold text-gray-800">${fullName}</p>
-                        <p class="text-[10px] text-gray-400 font-mono">${admNumber}</p>
+                        <p class="text-[10px] text-gray-500 font-mono">${admNumber}</p>
                     </td>
-                    <td class="px-4 py-4">
-                        <input type="number" min="0" max="100" class="cat-input w-full px-3 py-2 bg-white border border-gray-200 rounded text-sm outline-none focus:ring-2 focus:ring-ramBlue" placeholder="0" oninput="calculateRowGrade(${index})">
+                    <td class="px-4 py-4 font-bold text-gray-800">${fullName}</td>
+                    <td class="px-4 py-4 text-center">
+                        <input type="text" class="score-input w-24 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-center focus:ring-2 focus:ring-ramBlue outline-none transition mx-auto" placeholder="Score or DNS" oninput="updateRowGrade(this, ${index})">
                     </td>
-                    <td class="px-4 py-4">
-                        <input type="number" min="0" max="100" class="exam-input w-full px-3 py-2 bg-white border border-gray-200 rounded text-sm outline-none focus:ring-2 focus:ring-ramBlue" placeholder="0" oninput="calculateRowGrade(${index})">
+                    <td class="px-4 py-4" id="grade-label-${index}">
+                        <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400">Pending</span>
                     </td>
-                    <td class="px-4 py-4 text-center font-black text-gray-700 total-score">0</td>
-                    <td class="px-4 py-4 font-bold text-xs grade-display text-gray-400">--</td>
                 </tr>
             `;
         });
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-500">Error loading student roster.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-red-500">Error loading student roster.</td></tr>';
         console.error(e);
+    }
+}
+
+// --- DYNAMIC GRADING MATH ---
+function calculateGrade(scoreInput) {
+    const val = scoreInput.trim().toUpperCase();
+    if (val === '') return null;
+    if (val === 'DNS') return { label: 'DNS', color: 'text-gray-500', bg: 'bg-gray-200' };
+
+    const score = parseFloat(val);
+    if (isNaN(score) || score < 0 || score > 100) return { label: 'Invalid', color: 'text-red-500', bg: 'bg-red-50' };
+    
+    if (score >= 80) return { label: 'Distinction', color: 'text-green-700', bg: 'bg-green-100' };
+    if (score >= 70) return { label: 'Credit', color: 'text-blue-700', bg: 'bg-blue-100' };
+    if (score >= 60) return { label: 'Pass', color: 'text-yellow-700', bg: 'bg-yellow-100' };
+    return { label: 'Fail', color: 'text-red-700', bg: 'bg-red-100' };
+}
+
+function updateRowGrade(inputElement, rowIndex) {
+    const gradeData = calculateGrade(inputElement.value);
+    const gradeCell = document.getElementById(`grade-label-${rowIndex}`);
+    
+    if (!gradeData) {
+        gradeCell.innerHTML = `<span class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400">Pending</span>`;
+    } else {
+        gradeCell.innerHTML = `<span class="px-3 py-1 rounded-full text-[10px] font-bold ${gradeData.bg} ${gradeData.color}">${gradeData.label}</span>`;
+    }
+
+    // Recalculate 100% Math Gateway status on every keystroke
+    updateMatchCounter();
+}
+
+function updateMatchCounter() {
+    const rows = document.querySelectorAll('.student-row');
+    let accountedFor = 0;
+
+    rows.forEach(row => {
+        const val = row.querySelector('.score-input').value.trim().toUpperCase();
+        if (val === 'DNS' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
+            accountedFor++;
+        }
+    });
+
+    const countDisplay = document.getElementById('ui-student-count');
+    const submitBtn = document.getElementById('btn-submit-grades');
+    
+    if (countDisplay) {
+        countDisplay.innerText = `${accountedFor}/${totalStudentsExpected} Students Accounted For`;
+        if (accountedFor === totalStudentsExpected && totalStudentsExpected > 0) {
+            countDisplay.classList.replace('text-gray-800', 'text-ramGreen');
+        } else {
+            countDisplay.classList.replace('text-ramGreen', 'text-gray-800');
+        }
+    }
+
+    if (submitBtn) {
+        if (accountedFor === totalStudentsExpected && totalStudentsExpected > 0) {
+            submitBtn.disabled = false;
+        } else {
+            submitBtn.disabled = true;
+        }
     }
 }
 
@@ -843,22 +1181,27 @@ async function addSupplementaryStudent() {
         const newRowHTML = `
             <tr class="hover:bg-yellow-50 transition student-row border-l-4 border-ramGold bg-yellow-50/30" data-adm="${data.admission_number}" data-name="${fullName}">
                 <td class="px-4 py-4">
-                    <p class="font-bold text-gray-800">${fullName} <span class="text-[9px] bg-ramGold text-white px-2 py-0.5 rounded-full ml-2 uppercase font-black tracking-wider">Retake</span></p>
                     <p class="text-[10px] text-gray-500 font-mono">${data.admission_number}</p>
                 </td>
                 <td class="px-4 py-4">
-                    <input type="number" min="0" max="100" class="cat-input w-full px-3 py-2 bg-white border border-yellow-200 rounded text-sm outline-none focus:ring-2 focus:ring-ramGold" placeholder="0" oninput="calculateRowGrade(${newRowIndex})">
+                    <p class="font-bold text-gray-800">${fullName} <span class="text-[9px] bg-ramGold text-white px-2 py-0.5 rounded-full ml-2 uppercase font-black tracking-wider">Added</span></p>
                 </td>
-                <td class="px-4 py-4">
-                    <input type="number" min="0" max="100" class="exam-input w-full px-3 py-2 bg-white border border-yellow-200 rounded text-sm outline-none focus:ring-2 focus:ring-ramGold" placeholder="0" oninput="calculateRowGrade(${newRowIndex})">
+                <td class="px-4 py-4 text-center">
+                    <input type="text" class="score-input w-24 px-3 py-2 bg-white border border-yellow-200 rounded-lg text-sm font-bold text-center focus:ring-2 focus:ring-ramGold outline-none transition mx-auto" placeholder="Score or DNS" oninput="updateRowGrade(this, ${newRowIndex})">
                 </td>
-                <td class="px-4 py-4 text-center font-black text-gray-700 total-score">0</td>
-                <td class="px-4 py-4 font-bold text-xs grade-display text-gray-400">--</td>
+                <td class="px-4 py-4" id="grade-label-${newRowIndex}">
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400">Pending</span>
+                </td>
             </tr>
         `;
 
         tbody.insertAdjacentHTML('beforeend', newRowHTML);
         admInput.value = '';
+        
+        // Increase the 100% Math requirement to account for the newly added student
+        totalStudentsExpected++; 
+        updateMatchCounter();
+        
         showToast(`${fullName} added to grading roster.`, "success");
 
     } catch (e) {
@@ -879,33 +1222,7 @@ function closeGradebookModal() {
     }, 300);
 }
 
-// Visual feedback ONLY. The server will re-calculate everything securely.
-function calculateRowGrade(rowIndex) {
-    const row = document.querySelectorAll('.student-row')[rowIndex];
-    const catVal = parseFloat(row.querySelector('.cat-input').value) || 0;
-    const examVal = parseFloat(row.querySelector('.exam-input').value) || 0;
-    
-    const total = catVal + examVal;
-    row.querySelector('.total-score').innerText = total;
-
-    const gradeDisplay = row.querySelector('.grade-display');
-    
-    if (total >= 80) {
-        gradeDisplay.innerText = "Distinction";
-        gradeDisplay.className = "px-4 py-4 font-black text-xs grade-display text-ramGold";
-    } else if (total >= 70) {
-        gradeDisplay.innerText = "Credit";
-        gradeDisplay.className = "px-4 py-4 font-bold text-xs grade-display text-ramBlue";
-    } else if (total >= 60) {
-        gradeDisplay.innerText = "Pass";
-        gradeDisplay.className = "px-4 py-4 font-bold text-xs grade-display text-ramGreen";
-    } else {
-        gradeDisplay.innerText = "Fail";
-        gradeDisplay.className = "px-4 py-4 font-bold text-xs grade-display text-red-500";
-    }
-}
-
-// --- UPDATED: EXTERNAL BACKEND - SUBMIT GRADES & LOG AUDIT ---
+// --- UPDATED: EXTERNAL BACKEND - SUBMIT GRADES WITH DNS & 100% MATH ---
 async function submitGrades() {
     const btn = document.getElementById('btn-submit-grades');
     const rows = document.querySelectorAll('.student-row');
@@ -913,22 +1230,21 @@ async function submitGrades() {
 
     // 1. Pack grades locally (Server handles final calculation & assignments securely)
     rows.forEach(row => {
-        const catStr = row.querySelector('.cat-input').value;
-        const examStr = row.querySelector('.exam-input').value;
+        const val = row.querySelector('.score-input').value.trim().toUpperCase();
+        const isDns = val === 'DNS';
+        const score = isDns ? 0 : (parseFloat(val) || 0);
 
-        // Only pack if the lecturer actually typed something in
-        if (catStr !== '' || examStr !== '') {
-            gradesPayload.push({
-                student_name: row.getAttribute('data-name'),
-                admission_number: row.getAttribute('data-adm'),
-                cat_score: parseFloat(catStr) || 0,
-                exam_score: parseFloat(examStr) || 0
-            });
-        }
+        gradesPayload.push({
+            student_name: row.getAttribute('data-name'),
+            admission_number: row.getAttribute('data-adm'),
+            cat_score: 0, // Legacy support field mapped to 0
+            exam_score: score, // Contains the actual score from the Staging Area
+            is_dns: isDns
+        });
     });
 
-    if (gradesPayload.length === 0) {
-        showToast("No grades entered to submit.", "error");
+    if (gradesPayload.length !== totalStudentsExpected || totalStudentsExpected === 0) {
+        showToast("Cannot submit. 100% of students must be accounted for.", "error");
         return;
     }
 
@@ -997,7 +1313,7 @@ async function fetchLecturerSubmissions() {
                         <tr>
                             <td class="py-3"><p class="font-bold text-gray-800">${res.student_name}</p><p class="text-[10px] text-gray-400 font-mono">${res.admission_number}</p></td>
                             <td class="py-3"><p class="font-bold text-ramGold uppercase text-[10px]">${res.block_name}</p><p class="text-xs">${res.unit_name}</p></td>
-                            <td class="py-3 font-bold">${res.total_score} <span class="text-[10px] text-gray-400">(${res.grade})</span></td>
+                            <td class="py-3 font-bold">${res.grade === 'DNS' ? 'DNS' : res.total_score} <span class="text-[10px] text-gray-400">(${res.grade})</span></td>
                             <td class="py-3"><span class="px-2 py-1 rounded-full text-[9px] font-bold ${res.status === 'Approved' ? 'bg-green-100 text-green-700' : (res.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700')}">${res.status}</span></td>
                         </tr>
                     `).join('')}
@@ -1005,6 +1321,191 @@ async function fetchLecturerSubmissions() {
             </table>
         `;
     } catch (e) { list.innerHTML = '<p class="text-sm text-red-500">Error loading submissions.</p>'; }
+}
+
+
+// --- EXCEL FILE READER & TEMPLATE LOGIC ---
+function setupDropzone() {
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+
+    // Also allow dropping directly into the modal table area as a fallback
+    const modalDropzone = document.getElementById('gradebookBox'); 
+
+    const attachDragEvents = (dz) => {
+        if (!dz) return;
+        dz.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dz.classList.add('border-ramBlue', 'bg-blue-50');
+        });
+        dz.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dz.classList.remove('border-ramBlue', 'bg-blue-50');
+        });
+        dz.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dz.classList.remove('border-ramBlue', 'bg-blue-50');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+    };
+
+    attachDragEvents(dropzone);
+    attachDragEvents(modalDropzone);
+
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+    }
+}
+
+function handleFileUpload(file) {
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
+        showToast("Invalid file type. Please upload an Excel or CSV file.", "error");
+        return;
+    }
+
+    showToast(`Parsing ${file.name}...`, "success");
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            
+            // SheetJS is required for this to work
+            if (typeof XLSX === 'undefined') {
+                throw new Error("SheetJS library not loaded. Please refresh the page.");
+            }
+            
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            const jsonRoster = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            
+            renderStagingTable(jsonRoster);
+            
+        } catch (error) {
+            console.error("Excel Parsing Error:", error);
+            showToast(error.message || "Failed to read the Excel file. Please ensure it matches the template.", "error");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function renderStagingTable(parsedData) {
+    // Hide upload UI if it exists, show staging
+    const uploadZone = document.getElementById('upload-zone-card');
+    const stagingTable = document.getElementById('staging-table-card');
+    if (uploadZone) uploadZone.classList.add('hidden');
+    if (stagingTable) stagingTable.classList.remove('hidden');
+
+    // We target the gradebook-tbody which is inside the staging modal
+    const tbody = document.getElementById('gradebook-tbody');
+    if (!tbody) {
+        showToast("Staging table not found.", "error");
+        return;
+    }
+    
+    tbody.innerHTML = "";
+    totalStudentsExpected = parsedData.length;
+
+    parsedData.forEach((student, index) => {
+        const admNumber = student["Admission No."] || student["Admission Number"] || student["Adm Number"] || "Unknown";
+        const fullName = student["Student Name"] || student["Name"] || "Unknown";
+        const score = student["Score"] !== undefined && student["Score"] !== null ? String(student["Score"]).trim() : ""; 
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition student-row" data-adm="${admNumber}" data-name="${fullName}">
+                <td class="px-4 py-4">
+                    <p class="text-[10px] text-gray-500 font-mono">${admNumber}</p>
+                </td>
+                <td class="px-4 py-4 font-bold text-gray-800">${fullName}</td>
+                <td class="px-4 py-4 text-center">
+                    <input type="text" value="${score}" class="score-input w-24 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-center focus:ring-2 focus:ring-ramBlue outline-none transition mx-auto" placeholder="Score or DNS" oninput="updateRowGrade(this, ${index})">
+                </td>
+                <td class="px-4 py-4" id="grade-label-${index}">
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400">Pending</span>
+                </td>
+            </tr>
+        `;
+    });
+
+    // Run the grading math and 100% gateway check immediately on the uploaded data
+    const rows = document.querySelectorAll('.student-row');
+    rows.forEach((row, index) => {
+        const input = row.querySelector('.score-input');
+        updateRowGrade(input, index);
+    });
+
+    // If the modal isn't open, open it
+    const modal = document.getElementById('gradebookModal');
+    if (modal && modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            document.getElementById('gradebookBackdrop').classList.replace('opacity-0', 'opacity-100');
+            document.getElementById('gradebookBox').classList.replace('scale-90', 'scale-100');
+            document.getElementById('gradebookBox').classList.replace('opacity-0', 'opacity-100');
+        }, 10);
+    }
+    
+    showToast("Roster mapped successfully! Please review grades.", "success");
+}
+
+async function downloadRosterTemplate() {
+    if (!currentGradingSession.block || !currentGradingSession.unit) {
+        showToast("Please open a unit gradebook first.", "error");
+        return;
+    }
+
+    showToast("Generating roster template...", "success");
+
+    try {
+        const blockName = currentGradingSession.block;
+        const unitName = currentGradingSession.unit;
+
+        // Fetch exactly who is missing grades from the Python backend
+        const response = await fetch(`${BACKEND_API_URL}/ungraded-students/${blockName}/${unitName}`);
+        const resData = await response.json();
+
+        if (!response.ok || !resData.success) throw new Error(resData.detail || "Failed to fetch roster.");
+
+        const students = resData.students;
+
+        if (!students || students.length === 0) {
+            showToast("All students in this block are already graded.", "success");
+            return;
+        }
+
+        // Format the data for Excel
+        const excelData = students.map(s => ({
+            "Admission No.": s.admission_number,
+            "Student Name": s.student_name,
+            "Score": "" // Leave blank for the lecturer to fill in
+        }));
+
+        if (typeof XLSX === 'undefined') {
+            throw new Error("SheetJS library not loaded. Please refresh the page.");
+        }
+
+        // Create a new workbook and inject the data
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Grade Roster");
+
+        // Trigger the download automatically
+        const fileName = `${blockName}_${unitName}_Template.xlsx`.replace(/[^a-zA-Z0-9]/g, "_");
+        XLSX.writeFile(workbook, fileName);
+
+    } catch (e) {
+        console.error(e);
+        showToast(e.message, "error");
+    }
 }
 
 
