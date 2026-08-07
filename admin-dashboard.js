@@ -9,7 +9,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Define your live external API base URL here for easy reference
-const BACKEND_API_URL = 'http://127.0.0.1:8000/api';
+const BACKEND_API_URL = 'https://ram-portal-backend.onrender.com/api';
 
 let currentAdmin = null;
 let adminProfile = null;
