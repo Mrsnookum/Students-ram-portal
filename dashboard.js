@@ -39,7 +39,7 @@ async function initializeDashboard() {
     const id = student.admission_number;
     
     const intake = (student.intake === 'Not Set' || !student.intake) ? "" : student.intake;
-    const block = (student.block === 'Not Set' || !student.block) ? "" : student.block;
+    const block = (student.block === 'Not Set' || student.block === 'Pending' || !student.block) ? "" : student.block;
     const isLocked = student.is_locked;
 
     document.getElementById('ui-name-sidebar').innerText = name;
