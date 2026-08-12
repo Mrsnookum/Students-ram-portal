@@ -51,8 +51,31 @@ async function initializeAdminDashboard() {
     document.getElementById('ui-role-badge').innerText = profile.role_level;
     document.getElementById('welcome-name').innerText = profile.full_name.split(' ')[0];
 
+    // --- NEW: Singleton Role Dropdown Enforcement ---
+    enforceDropdownSecurity(profile.role_level);
+
     // 4. Build Navigation based on Role
     buildNavigation(profile.role_level);
+}
+
+function enforceDropdownSecurity(roleLevel) {
+    // If the user is NOT a SuperAdmin, disable/hide the executive roles from the creation/edit dropdowns
+    if (roleLevel !== 'SuperAdmin') {
+        const dropdowns = ['staff-role', 'edit-staff-role'];
+        const restrictedRoles = ['SuperAdmin', 'Principal', 'QA Officer', 'HOD'];
+
+        dropdowns.forEach(dropdownId => {
+            const selectElement = document.getElementById(dropdownId);
+            if (selectElement) {
+                Array.from(selectElement.options).forEach(option => {
+                    if (restrictedRoles.includes(option.value)) {
+                        option.disabled = true;
+                        option.hidden = true; // Hides it in most modern browsers
+                    }
+                });
+            }
+        });
+    }
 }
 
 function buildNavigation(role) {
@@ -61,15 +84,14 @@ function buildNavigation(role) {
 
     // Define all possible modules and who can access them
     const modules = [
-        { id: 'overview', icon: 'fa-chart-pie', label: 'Overview', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD', 'Lecturer', 'Welfare', 'Placement'] },
-        // UPDATED: Let Principal & Deputy see Staff Management too
-        { id: 'staff', icon: 'fa-users-cog', label: 'Staff Management', roles: ['SuperAdmin', 'Principal'] },
-        { id: 'approvals', icon: 'fa-user-check', label: 'Pending Registrations', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD'] },
-        { id: 'academics', icon: 'fa-graduation-cap', label: 'Academics & Results', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD', 'Lecturer'] },
-        { id: 'placements', icon: 'fa-hospital-user', label: 'Clinical Placements', roles: ['SuperAdmin', 'Principal', 'Placement'] },
-        { id: 'welfare', icon: 'fa-headset', label: 'Student Welfare', roles: ['SuperAdmin', 'Principal', 'Welfare'] },
-        { id: 'announcements', icon: 'fa-bullhorn', label: 'Announcements', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD'] },
-        { id: 'settings', icon: 'fa-cog', label: 'My Account', roles: ['SuperAdmin', 'Principal', 'HOD', 'Deputy HOD', 'Lecturer', 'Welfare', 'Placement'] }
+        { id: 'overview', icon: 'fa-chart-pie', label: 'Overview', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD', 'Lecturer', 'Welfare', 'Placement'] },
+        { id: 'staff', icon: 'fa-users-cog', label: 'Staff Management', roles: ['SuperAdmin', 'Principal', 'QA Officer'] }, // Added QA Officer for view-only
+        { id: 'approvals', icon: 'fa-user-check', label: 'Pending Registrations', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD'] }, // QA added for view/review
+        { id: 'academics', icon: 'fa-graduation-cap', label: 'Academics & Results', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD', 'Lecturer'] },
+        { id: 'placements', icon: 'fa-hospital-user', label: 'Clinical Placements', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'Placement'] },
+        { id: 'welfare', icon: 'fa-headset', label: 'Student Welfare', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'Welfare'] },
+        { id: 'announcements', icon: 'fa-bullhorn', label: 'Announcements', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD'] },
+        { id: 'settings', icon: 'fa-cog', label: 'My Account', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD', 'Lecturer', 'Welfare', 'Placement'] }
     ];
 
     modules.forEach(mod => {
@@ -130,23 +152,28 @@ function showAdminSection(sectionId) {
     if (window.innerWidth < 768) toggleDrawer(false);
 }
 
-// --- ACADEMICS: LECTURER VS HOD ROUTING ---
+// --- ACADEMICS: LECTURER VS HOD VS QA ROUTING ---
 function renderAcademicsModule() {
-    const isLecturer = adminProfile.role_level === 'Lecturer';
+    const role = adminProfile.role_level;
     
-    if (isLecturer) {
+    if (role === 'Lecturer') {
         document.getElementById('lecturer-view').classList.remove('hidden');
         document.getElementById('hod-view').classList.add('hidden');
         fetchMyUnits(); 
-        fetchLecturerSubmissions(); // Added to ensure the activity UI populates
-    } else {
+        fetchLecturerSubmissions(); 
+    } else if (role === 'QA Officer' || role === 'SuperAdmin' || role === 'Principal' || role === 'Principal / Deputy') {
+        // QA and Executives see the HOD view but across ALL departments
         document.getElementById('lecturer-view').classList.add('hidden');
         document.getElementById('hod-view').classList.remove('hidden');
-        // Fetch the lecturers list for the HOD
-        fetchDepartmentLecturers();
-        // Fetch pending results for HOD approval
+        fetchDepartmentLecturers(true); // True flags it to fetch ALL lecturers, not just one dept
         fetchPendingApprovals();
-        // Fetch approval history
+        fetchHodHistory();
+    } else {
+        // Standard HOD view (restricted to their department)
+        document.getElementById('lecturer-view').classList.add('hidden');
+        document.getElementById('hod-view').classList.remove('hidden');
+        fetchDepartmentLecturers(false);
+        fetchPendingApprovals();
         fetchHodHistory();
     }
 }
@@ -265,11 +292,12 @@ async function updatePassword(event) {
     }
 }
 
-// --- GLOBAL STAFF MANAGEMENT (SuperAdmin & Principal) ---
+// --- GLOBAL STAFF MANAGEMENT ---
 let allStaffData = []; // Store to quickly populate edit modal
 
 async function fetchStaffList() {
-    if (adminProfile.role_level !== 'SuperAdmin' && adminProfile.role_level !== 'Principal') return;
+    const role = adminProfile.role_level;
+    if (role !== 'SuperAdmin' && role !== 'Principal' && role !== 'Principal / Deputy' && role !== 'QA Officer') return;
 
     const tbody = document.getElementById('staff-table-body');
     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading staff directory...</td></tr>';
@@ -287,15 +315,24 @@ async function fetchStaffList() {
         }
 
         data.forEach(staff => {
+            // GHOST PROTOCOL: Hide SuperAdmins from everyone except themselves
+            if (staff.role_level === 'SuperAdmin' && role !== 'SuperAdmin') return;
+
             const statusBadge = staff.is_active 
                 ? '<span class="px-2.5 py-1 bg-green-100 text-green-700 font-bold text-[10px] rounded-full">Active</span>'
                 : '<span class="px-2.5 py-1 bg-red-100 text-red-700 font-bold text-[10px] rounded-full">Disabled</span>';
             
-            // Disable editing yourself to prevent accidental lockouts
+            // Disable editing yourself or if you are just a QA Viewer
             const isSelf = staff.id === adminProfile.id;
-            const actionBtn = isSelf 
-                ? '<span class="text-[10px] text-gray-400 italic">Current User</span>'
-                : `<button onclick="openEditStaffModal('${staff.id}')" class="text-gray-400 hover:text-ramBlue p-2 transition"><i class="fas fa-edit"></i></button>`;
+            let actionBtn = '';
+            
+            if (role === 'QA Officer') {
+                actionBtn = '<span class="text-[10px] text-gray-400 italic">Audit View</span>';
+            } else if (isSelf) {
+                actionBtn = '<span class="text-[10px] text-gray-400 italic">Current User</span>';
+            } else {
+                actionBtn = `<button onclick="openEditStaffModal('${staff.id}')" class="text-gray-400 hover:text-ramBlue p-2 transition"><i class="fas fa-edit"></i></button>`;
+            }
 
             tbody.innerHTML += `
                 <tr class="hover:bg-gray-50 transition ${!staff.is_active ? 'opacity-60' : ''}">
@@ -326,7 +363,17 @@ function openEditStaffModal(staffId) {
     document.getElementById('edit-staff-name').value = staff.full_name;
     document.getElementById('edit-staff-email').value = staff.email;
     document.getElementById('edit-staff-dept').value = staff.department;
-    document.getElementById('edit-staff-role').value = staff.role_level;
+    
+    // Attempt to set the role level. If it's disabled/hidden by security, we force it.
+    const roleSelect = document.getElementById('edit-staff-role');
+    const roleOption = Array.from(roleSelect.options).find(opt => opt.value === staff.role_level);
+    if (roleOption && roleOption.disabled) {
+        // Temporarily enable it just so the UI shows current value correctly
+        roleOption.disabled = false;
+        roleOption.hidden = false;
+    }
+    roleSelect.value = staff.role_level;
+    
     document.getElementById('edit-staff-status').value = staff.is_active.toString();
 
     // Show Modal
@@ -352,6 +399,8 @@ function closeEditStaffModal() {
     
     setTimeout(() => {
         document.getElementById('editStaffModal').classList.add('hidden');
+        // Re-enforce security rules on the dropdown to hide the options again
+        enforceDropdownSecurity(adminProfile.role_level);
     }, 300);
 }
 
@@ -389,7 +438,7 @@ async function submitEditStaff(event) {
         closeEditStaffModal();
         
         // Refresh based on where they edited from
-        if (adminProfile.role_level === 'SuperAdmin' || adminProfile.role_level === 'Principal') {
+        if (adminProfile.role_level === 'SuperAdmin' || adminProfile.role_level === 'Principal' || adminProfile.role_level === 'Principal / Deputy') {
             fetchStaffList(); 
         } else {
             fetchDepartmentLecturers();
@@ -526,6 +575,14 @@ async function fetchPendingRegistrations() {
         tbody.innerHTML = '';
         data.forEach(student => {
             const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+            
+            // QA Viewer Check
+            const actionBtn = adminProfile.role_level === 'QA Officer' 
+                ? '<span class="text-[10px] text-gray-400 italic">Review Only</span>'
+                : `<button onclick="approveStudentRegistration('${student.auth_id}', this)" class="text-xs font-bold text-white bg-ramGreen hover:bg-green-700 px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-2 ml-auto">
+                        <span>Approve</span> <i class="fas fa-check"></i>
+                   </button>`;
+
             tbody.innerHTML += `
                 <tr class="hover:bg-gray-50 transition">
                     <td class="px-6 py-4 font-bold text-gray-800">${fullName}</td>
@@ -535,9 +592,7 @@ async function fetchPendingRegistrations() {
                         <span class="text-[10px] text-gray-400">${student.course}</span>
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <button onclick="approveStudentRegistration('${student.auth_id}', this)" class="text-xs font-bold text-white bg-ramGreen hover:bg-green-700 px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-2 ml-auto">
-                            <span>Approve</span> <i class="fas fa-check"></i>
-                        </button>
+                        ${actionBtn}
                     </td>
                 </tr>
             `;
@@ -580,7 +635,7 @@ async function approveStudentRegistration(authId, btnElement) {
     }
 }
 
-// --- HOD LECTURER MANAGEMENT ---
+// --- HOD & QA LECTURER MANAGEMENT ---
 function openHodLecturerModal() {
     const modal = document.getElementById('hodLecturerModal');
     const backdrop = document.getElementById('hodLecBackdrop');
@@ -610,24 +665,26 @@ function closeHodLecturerModal() {
 }
 
 // Fetch the newly added department lecturers from the database
-async function fetchDepartmentLecturers() {
+async function fetchDepartmentLecturers(fetchAll = false) {
     const list = document.getElementById('hod-lecturer-list');
     if (!list) return;
 
     list.innerHTML = '<p class="text-sm text-gray-400 italic">Loading lecturers from database...</p>';
 
     try {
-        const { data, error } = await supabaseClient
-            .from('staff_profiles')
-            .select('*')
-            .eq('department', 'Academics')
-            .eq('role_level', 'Lecturer')
-            .order('created_at', { ascending: false });
+        let query = supabaseClient.from('staff_profiles').select('*').eq('role_level', 'Lecturer');
+        
+        // If it's a standard HOD, only fetch Academics. If it's QA or Exec, fetch all.
+        if (!fetchAll) {
+            query = query.eq('department', 'Academics');
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) throw error;
 
         if (data.length === 0) {
-            list.innerHTML = '<p class="text-sm text-gray-400">No lecturers found in this department.</p>';
+            list.innerHTML = '<p class="text-sm text-gray-400">No lecturers found.</p>';
             return;
         }
 
@@ -641,7 +698,10 @@ async function fetchDepartmentLecturers() {
                 ? '<span class="px-2 py-1 bg-green-100 text-green-700 font-bold text-[10px] rounded-full">Active</span>'
                 : '<span class="px-2 py-1 bg-red-100 text-red-700 font-bold text-[10px] rounded-full">Disabled</span>';
             
-            // Allow HOD to edit their lecturers
+            const actionBtn = adminProfile.role_level === 'QA Officer'
+                ? '<span class="text-[10px] text-gray-400 italic">Audit View</span>'
+                : `<button onclick="openEditStaffModal('${lec.id}')" class="text-gray-400 hover:text-ramBlue p-1 transition"><i class="fas fa-edit"></i></button>`;
+
             list.innerHTML += `
                 <div class="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 rounded-xl mb-2 ${!lec.is_active ? 'opacity-60' : ''}">
                     <div class="flex items-center gap-3">
@@ -650,12 +710,12 @@ async function fetchDepartmentLecturers() {
                         </div>
                         <div>
                             <p class="text-sm font-bold text-gray-800">${lec.full_name}</p>
-                            <p class="text-[10px] text-gray-400">${lec.email}</p>
+                            <p class="text-[10px] text-gray-400">${lec.email} ${fetchAll ? `<span class="bg-gray-200 px-1 rounded ml-1 text-[8px]">${lec.department}</span>` : ''}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
                         ${statusBadge}
-                        <button onclick="openEditStaffModal('${lec.id}')" class="text-gray-400 hover:text-ramBlue p-1 transition"><i class="fas fa-edit"></i></button>
+                        ${actionBtn}
                     </div>
                 </div>
             `;
@@ -705,7 +765,7 @@ async function hodSubmitLecturer(event) {
         
         // Refresh the local department lecturers view if the function exists
         if (typeof fetchDepartmentLecturers === 'function') {
-            fetchDepartmentLecturers(); 
+            fetchDepartmentLecturers(adminProfile.role_level !== 'HOD'); 
         }
         
     } catch (e) {
@@ -786,6 +846,15 @@ async function openHodReviewModal(blockName, unitName) {
     const backdrop = document.getElementById('hodReviewBackdrop');
     const box = document.getElementById('hodReviewBox');
     const tbody = document.getElementById('hod-review-tbody');
+
+    // UI Updates for QA
+    if (adminProfile.role_level === 'QA Officer') {
+        document.getElementById('btn-approve-batch').classList.add('hidden');
+        document.getElementById('btn-reject-batch').innerHTML = '<i class="fas fa-flag mr-2"></i> Flag Batch';
+    } else {
+        document.getElementById('btn-approve-batch').classList.remove('hidden');
+        document.getElementById('btn-reject-batch').innerHTML = '<i class="fas fa-times mr-2"></i> Reject Batch';
+    }
 
     tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Fetching pending results from database...</td></tr>';
 
@@ -879,27 +948,25 @@ async function hodSubmitBatch(action) {
     if (action === 'Approved') {
         approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Approving...';
     } else {
-        rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Rejecting...';
+        rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
     }
 
     try {
         const rows = document.querySelectorAll('.hod-review-row');
         const editedGrades = [];
 
-        // If Approved, package up any edits the HOD made so the backend can overwrite them
-        if (action === 'Approved') {
-            rows.forEach(row => {
-                const val = row.querySelector('.review-score-input').value.trim().toUpperCase();
-                const isDns = val === 'DNS';
-                const score = isDns ? 0 : (parseFloat(val) || 0);
+        // If Approved OR QA is flagging/editing, package up the edits
+        rows.forEach(row => {
+            const val = row.querySelector('.review-score-input').value.trim().toUpperCase();
+            const isDns = val === 'DNS';
+            const score = isDns ? 0 : (parseFloat(val) || 0);
 
-                editedGrades.push({
-                    admission_number: row.getAttribute('data-adm'),
-                    exam_score: score, 
-                    is_dns: isDns
-                });
+            editedGrades.push({
+                admission_number: row.getAttribute('data-adm'),
+                exam_score: score, 
+                is_dns: isDns
             });
-        }
+        });
 
         const response = await fetch(`${BACKEND_API_URL}/approve-results`, {
             method: 'POST',
@@ -907,16 +974,17 @@ async function hodSubmitBatch(action) {
             body: JSON.stringify({
                 block_name: currentHodReviewSession.block,
                 unit_name: currentHodReviewSession.unit,
-                action: action === 'Approved' ? 'Approve' : 'Reject',
+                action: action === 'Approved' ? 'Approve' : 'Reject', // Rejection acts as the QA "Flag"
                 staff_id: adminProfile.id,
-                edited_grades: editedGrades.length > 0 ? editedGrades : null // Send edits if any
+                edited_grades: editedGrades.length > 0 ? editedGrades : null // Send edits
             })
         });
 
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.detail || `Failed to ${action.toLowerCase()} results.`);
         
-        showToast(`Results for ${currentHodReviewSession.unit} successfully ${action.toLowerCase()}!`, "success");
+        let actionWord = action === 'Approved' ? 'approved' : 'rejected and flagged';
+        showToast(`Results for ${currentHodReviewSession.unit} successfully ${actionWord}!`, "success");
         
         closeHodReviewModal();
         fetchPendingApprovals(); // Refresh the pending list
@@ -1010,7 +1078,7 @@ async function loadDynamicOverview() {
     // Show audit button for SuperAdmins & Principals
     const auditBtn = document.getElementById('btn-view-audit');
     if (auditBtn) {
-        if (role === 'SuperAdmin' || role === 'Principal' || role === 'Principal / Deputy') {
+        if (role === 'SuperAdmin' || role === 'Principal' || role === 'Principal / Deputy' || role === 'QA Officer') {
             auditBtn.classList.remove('hidden');
         } else {
             auditBtn.classList.add('hidden');
@@ -1018,7 +1086,7 @@ async function loadDynamicOverview() {
     }
 
     try {
-        if (role === 'SuperAdmin' || role === 'Principal' || role === 'Principal / Deputy') {
+        if (role === 'SuperAdmin' || role === 'Principal' || role === 'Principal / Deputy' || role === 'QA Officer') {
             const [staffReq, studentReq] = await Promise.all([
                 supabaseClient.from('staff_profiles').select('*', { count: 'exact', head: true }),
                 supabaseClient.from('students').select('*', { count: 'exact', head: true })
@@ -1096,7 +1164,7 @@ async function loadActivityFeed(role) {
                     `;
                 });
             }
-        } else if (role === 'HOD' || role === 'Deputy HOD') {
+        } else if (role === 'HOD' || role === 'Deputy HOD' || role === 'QA Officer') { // Added QA to see this feed
             const { data, error } = await supabaseClient
                 .from('exam_results')
                 .select('unit_name, block_name, status')
