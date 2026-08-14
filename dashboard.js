@@ -142,7 +142,7 @@ async function fetchAcademicData(admissionId, block, intake) {
 
         const [blockStatusRes, resultsRes, announcementsRes, placementRes, issuesRes] = await Promise.all([
             // 1. Checks if the entire block is published (All-or-Nothing Logic)
-            supabaseClient.from('student_blocks').select('is_published').eq('block_name', block).single(),
+            supabaseClient.from('student_blocks').select('is_published').eq('block_name', block).maybeSingle(),
             // 2. Fetch approved results
             supabaseClient.from('exam_results').select('*').eq('admission_number', admissionId).eq('block_name', block).eq('status', 'Approved'),
             // 3. Fetch active announcements matching the student's block or global
