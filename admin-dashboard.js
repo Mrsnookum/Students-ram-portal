@@ -9,7 +9,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Define your live external API base URL here for easy reference
-const BACKEND_API_URL = 'https://ram-portal-backend.onrender.com/api';
+const BACKEND_API_URL = 'http://127.0.0.1:8000/api';
 
 let currentAdmin = null;
 let adminProfile = null;
@@ -88,6 +88,7 @@ function buildNavigation(role) {
         { id: 'staff', icon: 'fa-users-cog', label: 'Staff Management', roles: ['SuperAdmin', 'Principal', 'QA Officer'] }, // Added QA Officer for view-only
         { id: 'approvals', icon: 'fa-user-check', label: 'Pending Registrations', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD'] }, // QA added for view/review
         { id: 'academics', icon: 'fa-graduation-cap', label: 'Academics & Results', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD', 'Lecturer'] },
+        { id: 'progression', icon: 'fa-layer-group', label: 'Block Progression', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD'] }, // NEW PROGRESSION BOARD
         { id: 'placements', icon: 'fa-hospital-user', label: 'Clinical Placements', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'Placement'] },
         { id: 'welfare', icon: 'fa-headset', label: 'Student Welfare', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'Welfare'] },
         { id: 'announcements', icon: 'fa-bullhorn', label: 'Announcements', roles: ['SuperAdmin', 'Principal', 'QA Officer', 'HOD', 'Deputy HOD'] },
@@ -133,6 +134,7 @@ function showAdminSection(sectionId) {
         'staff': 'Staff Management',
         'approvals': 'Pending Student Registrations',
         'academics': 'Academic Control Center',
+        'progression': 'Block Progression Board',
         'placements': 'Clinical Placement Manager',
         'welfare': 'Student Welfare Desk',
         'announcements': 'Broadcast Center',
@@ -1249,7 +1251,8 @@ async function openGradebook(blockName, unitName) {
     try {
         // Fetch ungraded students to populate the staging area 
         // (This simulates an Excel Template being mapped and loaded)
-        const response = await fetch(`${BACKEND_API_URL}/ungraded-students/${blockName}/${unitName}`);
+        // FIX: Using query parameters instead of path parameters
+        const response = await fetch(`${BACKEND_API_URL}/ungraded-students?block_name=${encodeURIComponent(blockName)}&unit_name=${encodeURIComponent(unitName)}`);
         const resData = await response.json();
 
         if (!response.ok || !resData.success) throw new Error(resData.detail || "Database Error");
@@ -1675,7 +1678,8 @@ async function downloadRosterTemplate() {
         const unitName = currentGradingSession.unit;
 
         // Fetch exactly who is missing grades from the Python backend
-        const response = await fetch(`${BACKEND_API_URL}/ungraded-students/${blockName}/${unitName}`);
+        // FIX: Using query parameters instead of path parameters
+        const response = await fetch(`${BACKEND_API_URL}/ungraded-students?block_name=${encodeURIComponent(blockName)}&unit_name=${encodeURIComponent(unitName)}`);
         const resData = await response.json();
 
         if (!response.ok || !resData.success) throw new Error(resData.detail || "Failed to fetch roster.");
@@ -2287,5 +2291,190 @@ async function fetchFullAuditLogs() {
     } catch (e) {
         console.error(e);
         feed.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Failed to load audit trail.</p>';
+    }
+}
+
+// ==========================================
+// BLOCK PROGRESSION & SUPPLEMENTARY LOGIC
+// ==========================================
+
+let clearedStudentsForPromotion = [];
+let currentProgressionBlock = "";
+
+async function auditProgression() {
+    const block = document.getElementById('progression-block-filter').value;
+    if (!block) {
+        showToast("Please select a block to audit.", "error");
+        return;
+    }
+
+    const container = document.getElementById('progression-results-container');
+    const emptyState = document.getElementById('progression-empty-state');
+    const clearedTbody = document.getElementById('cleared-students-tbody');
+    const heldBackTbody = document.getElementById('held-back-students-tbody');
+    const promoteBtn = document.getElementById('btn-promote-cohort');
+
+    emptyState.classList.add('hidden');
+    container.classList.remove('hidden');
+
+    clearedTbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Auditing records...</td></tr>';
+    heldBackTbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> Auditing records...</td></tr>';
+    
+    promoteBtn.disabled = true;
+    promoteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    try {
+        // 1. Fetch all approved students in the block
+        const { data: students, error: studentErr } = await supabaseClient
+            .from('students')
+            .select('admission_number, first_name, last_name')
+            .eq('block', block)
+            .eq('is_approved', true);
+        
+        if (studentErr) throw studentErr;
+
+        // 2. Fetch all verified (Approved) grades for these students
+        const { data: grades, error: gradesErr } = await supabaseClient
+            .from('exam_results')
+            .select('admission_number, unit_name, grade')
+            .eq('block_name', block)
+            .eq('status', 'Approved');
+
+        if (gradesErr) throw gradesErr;
+
+        // 3. Fetch required units for this block
+        const { data: units, error: unitsErr } = await supabaseClient
+            .from('unit_assignments')
+            .select('unit_name')
+            .eq('block_name', block);
+        
+        if (unitsErr) throw unitsErr;
+
+        const requiredUnits = [...new Set(units.map(u => u.unit_name))];
+
+        if (!students || students.length === 0) {
+            clearedTbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-gray-400">No students found in this block.</td></tr>';
+            heldBackTbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-gray-400">No students found in this block.</td></tr>';
+            return;
+        }
+
+        // Map grades by student (Keep the best grade if there are multiples from supplementaries)
+        const studentGrades = {};
+        grades.forEach(g => {
+            if (!studentGrades[g.admission_number]) studentGrades[g.admission_number] = {};
+            // If they already passed it, don't overwrite with a fail (just in case of weird data)
+            const currentGrade = studentGrades[g.admission_number][g.unit_name];
+            if (currentGrade !== 'Distinction' && currentGrade !== 'Credit' && currentGrade !== 'Pass') {
+                studentGrades[g.admission_number][g.unit_name] = g.grade;
+            }
+        });
+
+        const cleared = [];
+        const heldBack = [];
+
+        students.forEach(student => {
+            const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+            const sGrades = studentGrades[student.admission_number] || {};
+            
+            let hasFailed = false;
+            const failedUnits = [];
+
+            // Check if they took all required units and passed
+            requiredUnits.forEach(reqUnit => {
+                const grade = sGrades[reqUnit];
+                if (!grade) {
+                    hasFailed = true;
+                    failedUnits.push(`${reqUnit} (Missing)`);
+                } else if (grade === 'Fail' || grade === 'DNS' || grade === 'Invalid') {
+                    hasFailed = true;
+                    failedUnits.push(`${reqUnit} (${grade})`);
+                }
+            });
+
+            if (hasFailed) {
+                heldBack.push({ ...student, fullName, failedUnits });
+            } else {
+                cleared.push({ ...student, fullName });
+            }
+        });
+
+        // Render Cleared
+        if (cleared.length === 0) {
+            clearedTbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-gray-400">No students cleared for promotion.</td></tr>';
+        } else {
+            clearedTbody.innerHTML = cleared.map(s => `
+                <tr class="hover:bg-green-50 transition">
+                    <td class="px-6 py-3 font-mono text-[10px] text-gray-500">${s.admission_number}</td>
+                    <td class="px-6 py-3 font-bold text-gray-800">${s.fullName}</td>
+                    <td class="px-6 py-3 text-center"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider">Cleared</span></td>
+                </tr>
+            `).join('');
+            
+            // Enable promote button only for allowed roles
+            if (['SuperAdmin', 'Principal', 'Principal / Deputy', 'HOD', 'Deputy HOD'].includes(adminProfile.role_level)) {
+                promoteBtn.disabled = false;
+                promoteBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // Render Held Back
+        if (heldBack.length === 0) {
+            heldBackTbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-gray-400">No students held back.</td></tr>';
+        } else {
+            heldBackTbody.innerHTML = heldBack.map(s => `
+                <tr class="hover:bg-red-50 transition">
+                    <td class="px-6 py-3 font-mono text-[10px] text-gray-500">${s.admission_number}</td>
+                    <td class="px-6 py-3 font-bold text-gray-800">${s.fullName}</td>
+                    <td class="px-6 py-3 text-xs text-red-600 font-medium">${s.failedUnits.join(', ')}</td>
+                </tr>
+            `).join('');
+        }
+
+        clearedStudentsForPromotion = cleared.map(s => s.admission_number);
+        currentProgressionBlock = block;
+
+    } catch (e) {
+        console.error(e);
+        showToast("Failed to audit progression.", "error");
+        clearedTbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-red-500">Audit failed.</td></tr>';
+        heldBackTbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-red-500">Audit failed.</td></tr>';
+    }
+}
+
+async function promoteCohort() {
+    if (clearedStudentsForPromotion.length === 0) return;
+
+    const promoteBtn = document.getElementById('btn-promote-cohort');
+    const originalText = promoteBtn.innerHTML;
+
+    if (!confirm(`Are you sure you want to promote ${clearedStudentsForPromotion.length} student(s) from ${currentProgressionBlock} to the next block?`)) return;
+
+    promoteBtn.disabled = true;
+    promoteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Promoting...';
+
+    try {
+        const payload = {
+            current_block: currentProgressionBlock,
+            students: clearedStudentsForPromotion,
+            requester_id: adminProfile.auth_id
+        };
+
+        const response = await fetch(`${BACKEND_API_URL}/promote-students`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.detail || "Failed to promote students.");
+
+        showToast(`Successfully promoted ${clearedStudentsForPromotion.length} students!`, "success");
+        auditProgression(); // Re-audit to verify they are gone
+
+    } catch (e) {
+        console.error(e);
+        showToast(e.message, "error");
+        promoteBtn.disabled = false;
+        promoteBtn.innerHTML = originalText;
     }
 }
