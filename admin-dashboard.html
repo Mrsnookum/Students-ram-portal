@@ -166,8 +166,10 @@
                             <select id="lec-block" class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold flex-1" required>
                                 <option value="">Select Block</option>
                                 <option>Introductory</option>
-                                <option>Block 1</option><option>Block 2</option>
-                                <option>Block 3</option><option>Block 4</option><option>Block 5</option>
+                                <option>Block 1</option>
+                                <option>Block 2</option>
+                                <option>Block 3/4</option>
+                                <option>Block 5</option>
                             </select>
                             <input type="text" id="lec-unit" placeholder="Unit Name (e.g. Anatomy)" class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm flex-1" required>
                             <button type="submit" id="btn-claim-unit" class="bg-ramBlue text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-blue-800 transition">Add Unit</button>
@@ -215,6 +217,87 @@
 
             </div>
 
+            <!-- NEW: BLOCK PROGRESSION SECTION -->
+            <div id="section-progression" class="admin-section hidden space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">Block Progression Board</h3>
+                        <p class="text-xs text-gray-500 mt-1">Audit cohorts, manage supplementaries, and promote students.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <select id="progression-block-filter" class="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-ramBlue">
+                            <option value="">Select Block to Audit</option>
+                            <option value="Introductory">Introductory Block</option>
+                            <option value="Block 1">Block 1</option>
+                            <option value="Block 2">Block 2</option>
+                            <option value="Block 3/4">Block 3/4</option>
+                            <option value="Block 5">Block 5</option>
+                        </select>
+                        <button onclick="auditProgression()" class="bg-adminDark text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow hover:bg-slate-800 transition">
+                            <i class="fas fa-search mr-2"></i> Audit
+                        </button>
+                    </div>
+                </div>
+
+                <div id="progression-results-container" class="hidden space-y-6">
+                    <!-- Cleared for Promotion -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-green-200 overflow-hidden">
+                        <div class="p-4 border-b border-green-100 bg-green-50 flex justify-between items-center">
+                            <div>
+                                <h4 class="font-bold text-green-800"><i class="fas fa-check-circle mr-2"></i> Cleared for Promotion</h4>
+                                <p class="text-[10px] text-green-600 uppercase tracking-wider mt-1">Passed all registered units</p>
+                            </div>
+                            <button id="btn-promote-cohort" onclick="promoteCohort()" class="bg-ramGreen text-white px-4 py-2 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition">
+                                Promote to Next Block
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-white text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                    <tr>
+                                        <th class="px-6 py-3">Admission No.</th>
+                                        <th class="px-6 py-3">Student Name</th>
+                                        <th class="px-6 py-3 text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cleared-students-tbody" class="text-sm divide-y divide-gray-50">
+                                    <!-- JS Injects -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Held Back (Retakes/Fails) -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-red-200 overflow-hidden">
+                        <div class="p-4 border-b border-red-100 bg-red-50 flex justify-between items-center">
+                            <div>
+                                <h4 class="font-bold text-red-800"><i class="fas fa-exclamation-triangle mr-2"></i> Held Back (Supplementaries Required)</h4>
+                                <p class="text-[10px] text-red-600 uppercase tracking-wider mt-1">Failed one or more units / DNS</p>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-white text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                    <tr>
+                                        <th class="px-6 py-3">Admission No.</th>
+                                        <th class="px-6 py-3">Student Name</th>
+                                        <th class="px-6 py-3">Failed Units (Retakes)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="held-back-students-tbody" class="text-sm divide-y divide-gray-50">
+                                    <!-- JS Injects -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="progression-empty-state" class="text-center py-12 bg-white rounded-2xl border border-gray-200 shadow-sm">
+                    <i class="fas fa-clipboard-list text-5xl text-gray-200 mb-4"></i>
+                    <p class="text-gray-500 font-medium">Select a block and click Audit to review student progression.</p>
+                </div>
+            </div>
+
             <div id="section-placements" class="admin-section hidden space-y-6">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
@@ -225,8 +308,7 @@
                         <option value="Introductory">Introductory Block</option>
                         <option value="Block 1">Block 1</option>
                         <option value="Block 2">Block 2</option>
-                        <option value="Block 3">Block 3</option>
-                        <option value="Block 4">Block 4</option>
+                        <option value="Block 3/4">Block 3/4</option>
                         <option value="Block 5">Block 5</option>
                     </select>
                 </div>
@@ -656,8 +738,7 @@
                         <option value="Introductory">Introductory Block Only</option>
                         <option value="Block 1">Block 1 Only</option>
                         <option value="Block 2">Block 2 Only</option>
-                        <option value="Block 3">Block 3 Only</option>
-                        <option value="Block 4">Block 4 Only</option>
+                        <option value="Block 3/4">Block 3/4 Only</option>
                         <option value="Block 5">Block 5 Only</option>
                         <option value="Completed">Completed / Alumni Only</option>
                     </select>
