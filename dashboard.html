@@ -59,7 +59,7 @@
             </div>
         </div>
 
-        <nav class="flex-1 mt-6 px-4 space-y-1">
+        <nav class="flex-1 mt-6 px-4 space-y-1 overflow-y-auto no-scrollbar">
             <button onclick="showSection('home')" id="nav-home" class="nav-btn w-full flex items-center px-4 py-3 bg-blue-800 rounded-xl transition-all shadow-inner text-white">
                 <i class="fas fa-th-large w-6"></i><span>Dashboard</span>
             </button>
@@ -77,28 +77,35 @@
                 <i class="fas fa-headset w-6"></i><span>Help/Issues</span>
             </button>
 
-<div class="border-t border-blue-700/50 my-4 mx-4"></div>
+            <!-- NEW: Campus Life Menu -->
+            <div class="px-4 mt-8 mb-2 text-[10px] font-black text-blue-400 uppercase tracking-widest">Campus Life</div>
+            <button onclick="showSection('notifications')" id="nav-notifications" class="nav-btn w-full flex items-center justify-between px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100">
+                <div class="flex items-center"><i class="fas fa-bell w-6"></i><span>Get Notifications</span></div>
+                <span class="h-2 w-2 bg-ramGold rounded-full animate-pulse"></span>
+            </button>
+            
+            <div class="border-t border-blue-700/50 my-6 mx-4"></div>
 
-<div class="flex justify-center mb-1 pointer-events-none">
-    <dotlottie-player 
-        src="https://lottie.host/94d03e42-8ca0-466c-9433-dfbb800005c6/8JiTOJsm2y.lottie" 
-        background="transparent" 
-        speed="1" 
-        style="width: 90px; height: 90px;" 
-        loop 
-        autoplay>
-    </dotlottie-player>
-</div>
+            <div class="flex justify-center mb-1 pointer-events-none">
+                <dotlottie-player 
+                    src="https://lottie.host/94d03e42-8ca0-466c-9433-dfbb800005c6/8JiTOJsm2y.lottie" 
+                    background="transparent" 
+                    speed="1" 
+                    style="width: 90px; height: 90px;" 
+                    loop 
+                    autoplay>
+                </dotlottie-player>
+            </div>
 
-<button onclick="window.open('https://mrsnookum.github.io/RTC_voting/', '_blank')" 
-        id="nav-voting" 
-        class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/30 rounded-xl transition-all text-ramGold group border border-ramGold/20 hover:border-ramGold/50 shadow-sm">
-    <i class="fas fa-check-to-slot w-6 animate-pulse group-hover:animate-none group-hover:scale-125 transition-all duration-300"></i>
-    <span class="font-bold tracking-wide text-sm">Student Elections</span>
-</button>
+            <button onclick="window.open('https://mrsnookum.github.io/RTC_voting/', '_blank')" 
+                    id="nav-voting" 
+                    class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/30 rounded-xl transition-all text-ramGold group border border-ramGold/20 hover:border-ramGold/50 shadow-sm mb-6">
+                <i class="fas fa-check-to-slot w-6 animate-pulse group-hover:animate-none group-hover:scale-125 transition-all duration-300"></i>
+                <span class="font-bold tracking-wide text-sm">Student Elections</span>
+            </button>
         </nav>
 
-        <div class="p-4 border-t border-blue-800 bg-blue-900/30">
+        <div class="p-4 border-t border-blue-800 bg-blue-900/30 shrink-0">
             <div class="flex items-center gap-3">
                 <img id="ui-avatar" src="https://ui-avatars.com/api/?name=User&background=random" class="h-10 w-10 rounded-full border-2 border-white">
                 <div class="overflow-hidden">
@@ -305,9 +312,80 @@
                 </div>
             </div>
 
+            <!-- NEW: Get Notifications Setup Section -->
+            <div id="section-notifications" class="hidden space-y-6 max-w-4xl mx-auto">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 rounded-full bg-blue-50 text-ramBlue flex items-center justify-center text-3xl mx-auto mb-4">
+                        <i class="fas fa-satellite-dish"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Notification Setup</h2>
+                    <p class="text-sm text-gray-600 mt-2">Securely link your channels to receive critical exam updates, login codes, and portal announcements.</p>
+                </div>
+
+                <!-- Status Tracker -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div id="tg-status-card" class="p-4 bg-white rounded-2xl shadow-sm border border-red-100 flex items-center gap-3 transition-colors">
+                        <i class="fab fa-telegram text-2xl text-gray-300" id="tg-status-icon"></i>
+                        <div>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Telegram</p>
+                            <p class="font-bold text-sm text-gray-800" id="tg-status-text">Not Linked</p>
+                        </div>
+                    </div>
+                    <div id="wa-status-card" class="p-4 bg-white rounded-2xl shadow-sm border border-red-100 flex items-center gap-3 transition-colors">
+                        <i class="fab fa-whatsapp text-2xl text-gray-300" id="wa-status-icon"></i>
+                        <div>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">WhatsApp</p>
+                            <p class="font-bold text-sm text-gray-800" id="wa-status-text">Not Linked</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-6">
+                    <!-- Telegram Link Row -->
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border border-gray-200 rounded-xl bg-gray-50 gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center text-2xl shrink-0">
+                                <i class="fab fa-telegram-plane"></i>
+                            </div>
+                            <div class="text-left">
+                                <h4 class="font-bold text-gray-800">Telegram Bot</h4>
+                                <p class="text-xs text-gray-500 mt-1">For daily portal digests and general announcements.</p>
+                            </div>
+                        </div>
+                        <button id="btnLinkTelegram" onclick="startTelegramLink()" class="w-full sm:w-auto px-6 py-3 bg-blue-500 text-white text-sm font-bold rounded-xl shadow-md hover:bg-blue-600 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-link"></i> Link Telegram
+                        </button>
+                    </div>
+
+                    <!-- WhatsApp Link Row -->
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border border-gray-200 rounded-xl bg-gray-50 gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-green-100 text-green-500 flex items-center justify-center text-2xl shrink-0">
+                                <i class="fab fa-whatsapp"></i>
+                            </div>
+                            <div class="text-left">
+                                <h4 class="font-bold text-gray-800">WhatsApp Direct</h4>
+                                <p class="text-xs text-gray-500 mt-1">For urgent grades, login links, and direct chat @mentions.</p>
+                            </div>
+                        </div>
+                        <div id="whatsappInputContainer" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                            <input type="text" id="waPhoneInput" placeholder="e.g. 0712345678" class="w-full sm:w-40 px-4 py-3 border border-gray-300 rounded-xl text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
+                            <button id="btnLinkWhatsapp" onclick="saveWhatsApp()" class="w-full sm:w-auto px-6 py-3 bg-green-500 text-white text-sm font-bold rounded-xl shadow-md hover:bg-green-600 transition flex items-center justify-center gap-2">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="completion-lock-msg" class="text-center p-4 bg-yellow-50 rounded-xl border border-yellow-200 text-yellow-800 text-xs font-bold flex items-center justify-center gap-2">
+                    <i class="fas fa-lock"></i> Full portal access is restricted until both channels are secured.
+                </div>
+            </div>
+
         </div>
     </main>
 
+    <!-- Existing Modals -->
     <div id="customModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
         <div class="absolute inset-0 bg-ramBlue/40 backdrop-blur-md opacity-0 transition-opacity duration-300" id="modalBackdrop"></div>
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 transform scale-90 opacity-0 transition-all duration-300" id="modalBox">
@@ -336,7 +414,9 @@
         </div>
     </div>
 
-    <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[400px] z-[120] hidden transition-all duration-300 pointer-events-none"></div>
+    
+
+    <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[400px] z-[150] hidden transition-all duration-300 pointer-events-none"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="dashboard.js"></script>
@@ -351,6 +431,46 @@
                 drawer.classList.remove('drawer-open');
                 overlay.classList.add('hidden');
             }
+        }
+
+        // --- Coming Soon Modal Logic ---
+        function showComingSoonModal(title, desc, iconClass) {
+            document.getElementById('soonModalTitle').innerText = title;
+            document.getElementById('soonModalDesc').innerText = desc;
+            document.getElementById('soonModalIcon').className = 'fas ' + iconClass;
+            
+            const modal = document.getElementById('comingSoonModal');
+            const backdrop = document.getElementById('soonModalBackdrop');
+            const box = document.getElementById('soonModalBox');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                backdrop.classList.replace('opacity-0', 'opacity-100');
+                box.classList.replace('scale-90', 'scale-100');
+                box.classList.replace('opacity-0', 'opacity-100');
+            }, 10);
+        }
+
+        function closeComingSoonModal() {
+            const backdrop = document.getElementById('soonModalBackdrop');
+            const box = document.getElementById('soonModalBox');
+            
+            backdrop.classList.replace('opacity-100', 'opacity-0');
+            box.classList.replace('scale-100', 'scale-90');
+            box.classList.replace('opacity-100', 'opacity-0');
+            
+            setTimeout(() => {
+                document.getElementById('comingSoonModal').classList.add('hidden');
+            }, 300);
+        }
+
+        function redirectToNotifications() {
+            closeComingSoonModal();
+            setTimeout(() => {
+                if(typeof showSection === 'function') {
+                    showSection('notifications');
+                }
+            }, 300);
         }
     </script>
 </body>
