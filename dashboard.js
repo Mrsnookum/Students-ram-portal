@@ -4,10 +4,12 @@ const SUPABASE_URL = 'https://atkcgxthfgpadgxgqeaj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0a2NneHRoZmdwYWRneGdxZWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMDIzNjIsImV4cCI6MjA5Nzc3ODM2Mn0.ivC1B2QLjDGmyi_Glr8fnhGaZerLe2V1dHRfrVaZ1zc';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const FASTAPI_URL = 'http://127.0.0.1:8000'; // Backend URL for Notification APIs
 
 let currentUser = null;
 let currentStudent = null;
-let isProfileComplete = false; // Tracks if they are allowed to navigate
+let isProfileComplete = false; // Tracks if they are allowed to navigate block logic
+let isNotificationsLinked = false; // NEW: Tracks if both channels are linked
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeDashboard();
@@ -42,6 +44,11 @@ async function initializeDashboard() {
     const block = (student.block === 'Not Set' || student.block === 'Pending' || !student.block) ? "" : student.block;
     const isLocked = student.is_locked;
 
+    // Check Notification Links
+    const tgLinked = !!student.telegram_chat_id;
+    const waLinked = !!student.whatsapp_phone;
+    isNotificationsLinked = tgLinked || waLinked;
+
     document.getElementById('ui-name-sidebar').innerText = name;
     document.getElementById('ui-id-sidebar').innerText = id;
     document.getElementById('ui-welcome-name').innerText = `Welcome Back, ${student.first_name}!`;
@@ -53,6 +60,7 @@ async function initializeDashboard() {
     document.getElementById('ui-attendance-main').innerText = student.attendance || '0%';
 
     setupProfileFields(intake, block, isLocked, id);
+    updateNotificationUI(tgLinked, waLinked); // Update the setup screen UI
     
     // Check if the student needs to be blocked
     if (!block || !intake) {
@@ -132,6 +140,117 @@ async function lockProfile() {
         }
     });
 }
+
+// --- NOTIFICATION SETUP LOGIC (NEW) ---
+function updateNotificationUI(tg, wa) {
+    // 1. Sidebar Badge
+    if (tg || wa) {
+        const notifBadge = document.querySelector('#nav-notifications .bg-ramGold');
+        if (notifBadge) notifBadge.classList.add('hidden');
+    }
+
+    // 2. Telegram Status
+    if (tg) {
+        document.getElementById('tg-status-card').classList.replace('border-red-100', 'border-green-100');
+        document.getElementById('tg-status-icon').classList.replace('text-gray-300', 'text-green-500');
+        document.getElementById('tg-status-text').innerText = "Linked";
+        document.getElementById('tg-status-text').classList.replace('text-gray-800', 'text-green-600');
+        
+        const btnTg = document.getElementById('btnLinkTelegram');
+        if (btnTg) {
+            btnTg.disabled = true;
+            btnTg.innerHTML = '<i class="fas fa-check"></i> Linked';
+            btnTg.classList.replace('bg-blue-500', 'bg-green-500');
+            btnTg.classList.replace('hover:bg-blue-600', 'hover:bg-green-600');
+        }
+    }
+
+    // 3. WhatsApp Status
+    if (wa) {
+        document.getElementById('wa-status-card').classList.replace('border-red-100', 'border-green-100');
+        document.getElementById('wa-status-icon').classList.replace('text-gray-300', 'text-green-500');
+        document.getElementById('wa-status-text').innerText = "Linked";
+        document.getElementById('wa-status-text').classList.replace('text-gray-800', 'text-green-600');
+        
+        const waContainer = document.getElementById('whatsappInputContainer');
+        if (waContainer) {
+            waContainer.innerHTML = '<div class="px-6 py-3 bg-green-100 text-green-700 text-sm font-bold rounded-xl flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> Verified</div>';
+        }
+    }
+
+    // 4. Completion Banner
+    if (tg || wa) {
+        const lockMsg = document.getElementById('completion-lock-msg');
+        if (lockMsg) {
+            lockMsg.classList.replace('bg-yellow-50', 'bg-green-50');
+            lockMsg.classList.replace('border-yellow-200', 'border-green-200');
+            lockMsg.classList.replace('text-yellow-800', 'text-green-800');
+            lockMsg.innerHTML = '<i class="fas fa-unlock"></i> Notification channels secured. Full portal access granted.';
+        }
+    }
+}
+
+async function startTelegramLink() {
+    const btn = document.getElementById('btnLinkTelegram');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch(`${FASTAPI_URL}/api/generate-telegram-link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admission_number: currentStudent.admission_number })
+        });
+        
+        if (!response.ok) throw new Error("Failed to generate link");
+        const data = await response.json();
+        
+        window.open(data.link, '_blank');
+        showToast("Opening Telegram. Click 'Start' in the bot to link!", "success");
+        
+        btn.innerHTML = '<i class="fas fa-sync"></i> Refresh Page After Linking';
+        btn.disabled = false;
+        btn.onclick = () => location.reload();
+        
+    } catch (e) {
+        console.error(e);
+        showToast("Error generating Telegram link.", "error");
+        btn.innerHTML = '<i class="fas fa-link"></i> Link Telegram';
+        btn.disabled = false;
+    }
+}
+
+async function saveWhatsApp() {
+    const phone = document.getElementById('waPhoneInput').value.trim();
+    const btn = document.getElementById('btnLinkWhatsapp');
+    
+    if (!phone) return showToast("Please enter your WhatsApp number.", "error");
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch(`${FASTAPI_URL}/api/link-whatsapp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                admission_number: currentStudent.admission_number,
+                phone_number: phone
+            })
+        });
+        
+        if (!response.ok) throw new Error("Failed to link WhatsApp");
+        
+        showToast("WhatsApp successfully linked!", "success");
+        setTimeout(() => location.reload(), 1500);
+    } catch (e) {
+        console.error(e);
+        showToast("Error saving WhatsApp number.", "error");
+        btn.innerHTML = '<i class="fas fa-save"></i> Save';
+        btn.disabled = false;
+    }
+}
+
 
 // --- SUPER FETCHER RENDERING ---
 async function fetchAcademicData(admissionId, block, intake) {
@@ -246,13 +365,23 @@ async function fetchAcademicData(admissionId, block, intake) {
 
 // --- NAVIGATION INTERCEPTOR ---
 function showSection(sectionId) {
-    // Intercept navigation if profile is incomplete
+    // 1. Profile Completion Lock
     if (!isProfileComplete && sectionId !== 'home' && sectionId !== 'support') {
         document.getElementById('forcedSetupModal').classList.remove('hidden');
         return; 
     }
 
-    const sections = ['home', 'academics', 'clinical', 'announcements', 'support'];
+    // 2. Notification Gateway Lock
+    // Block Academics, Clinicals, and Announcements if notifications aren't fully linked
+    if (isProfileComplete && !isNotificationsLinked && ['academics', 'clinical', 'announcements'].includes(sectionId)) {
+        showToast("Please link Telegram and WhatsApp to unlock this feature.", "error");
+        showSection('notifications');
+        return;
+    }
+
+    // ADDED 'notifications' to this array so it properly hides previous pages
+    const sections = ['home', 'academics', 'clinical', 'announcements', 'support', 'notifications'];
+    
     sections.forEach(id => {
         const sec = document.getElementById('section-' + id);
         const nav = document.getElementById('nav-' + id);
@@ -261,11 +390,18 @@ function showSection(sectionId) {
     });
 
     document.getElementById('section-' + sectionId).classList.remove('hidden');
-    document.getElementById('nav-' + sectionId).classList.replace('hover:bg-blue-700/50', 'bg-blue-800');
+    
+    // Some buttons (like Notifications) might not have the standard background classes yet, so we handle safely
+    const navBtn = document.getElementById('nav-' + sectionId);
+    if(navBtn) navBtn.classList.replace('hover:bg-blue-700/50', 'bg-blue-800');
     
     const titles = {
-        'home': 'Overview', 'academics': 'Academic Results',
-        'clinical': 'Clinicals', 'announcements': 'Announcements', 'support': 'Support'
+        'home': 'Overview', 
+        'academics': 'Academic Results',
+        'clinical': 'Clinicals', 
+        'announcements': 'Announcements', 
+        'support': 'Support',
+        'notifications': 'Notification Setup' // Fixed the "undefined" bug
     };
     document.getElementById('page-title').innerText = titles[sectionId];
     toggleDrawer(false); 
