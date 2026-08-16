@@ -221,11 +221,182 @@ async function handleRegister(event) {
     }
 }
 
-// Attach event listeners safely
+
+// ==========================================
+// 3-STEP PASSWORD RESET LOGIC (FASTAPI + BREVO)
+// ==========================================
+
+// Global state to track the user through the 3 modal steps
+let resetState = {
+    admissionNo: '',
+    email: '',
+    otpCode: ''
+};
+
+// URL for the Python Backend (Update this when deploying to Render/Railway)
+const FASTAPI_URL = 'http://127.0.0.1:8000';
+
+async function handleRequestOtp(event) {
+    event.preventDefault();
+    const adm = document.getElementById('resetAdmNo').value.trim();
+    const email = document.getElementById('resetEmail').value.trim();
+    const btn = document.getElementById('btnRequestOtp');
+
+    if (!admissionRegex.test(adm)) {
+        return showToast("Invalid format. Use your exact ID (e.g., 894/24)", "error");
+    }
+
+    setLoading(btn, "Sending Code...");
+
+    try {
+        const response = await fetch(`${FASTAPI_URL}/api/request-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admission_number: adm, email: email })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || "Failed to send verification code. Check your details.");
+        }
+
+        // Save data to state
+        resetState.admissionNo = adm;
+        resetState.email = email;
+
+        showToast("Code sent! Check your email inbox.", "success");
+        goToStep(2);
+
+    } catch (error) {
+        showToast(error.message, "error");
+    } finally {
+        resetBtn(btn, `<span>Send Verification Code</span> <i class="fas fa-paper-plane"></i>`);
+    }
+}
+
+async function handleVerifyOtp(event) {
+    event.preventDefault();
+    const btn = document.getElementById('btnVerifyOtp');
+    
+    // Stitch the 6 digits together from the boxes
+    const otpInputs = document.querySelectorAll('.otp-input');
+    let otp = '';
+    otpInputs.forEach(input => otp += input.value);
+
+    if (otp.length !== 6) {
+        return showToast("Please enter the full 6-digit code.", "error");
+    }
+
+    setLoading(btn, "Verifying Identity...");
+
+    try {
+        const response = await fetch(`${FASTAPI_URL}/api/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                admission_number: resetState.admissionNo, 
+                otp_code: otp 
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || "Invalid or expired code. Please try again.");
+        }
+
+        resetState.otpCode = otp; // Save for the final password change step
+        showToast("Identity Verified!", "success");
+        goToStep(3);
+
+    } catch (error) {
+        showToast(error.message, "error");
+        // Clear the boxes if they got it wrong
+        otpInputs.forEach(input => input.value = '');
+        otpInputs[0].focus();
+    } finally {
+        resetBtn(btn, `<span>Verify Identity</span> <i class="fas fa-check-circle"></i>`);
+    }
+}
+
+async function handleUpdatePassword(event) {
+    event.preventDefault();
+    const newPass = document.getElementById('resetNewPass').value;
+    const confirmPass = document.getElementById('resetConfirmPass').value;
+    const btn = document.getElementById('btnUpdatePassword');
+
+    if (newPass !== confirmPass) {
+        return showToast("Passwords do not match.", "error");
+    }
+
+    if (newPass.length < 6) {
+        return showToast("Password must be at least 6 characters long.", "error");
+    }
+
+    setLoading(btn, "Securing Account...");
+
+    try {
+        const response = await fetch(`${FASTAPI_URL}/api/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                admission_number: resetState.admissionNo,
+                otp_code: resetState.otpCode,
+                new_password: newPass 
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || "Failed to update password.");
+        }
+
+        showToast("Success! Password securely updated. You can now log in.", "success");
+        
+        // Auto-close modal and fill in the login form
+        setTimeout(() => {
+            closeForgotPasswordModal();
+            document.getElementById('loginUsername').value = resetState.admissionNo;
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginPassword').focus();
+        }, 2000);
+
+    } catch (error) {
+        showToast(error.message, "error");
+    } finally {
+        resetBtn(btn, `<span>Secure Account & Login</span> <i class="fas fa-lock"></i>`);
+    }
+}
+
+// ==========================================
+// ATTACH EVENT LISTENERS SAFELY
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Existing Forms
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
+    
+    // New OTP Forms
+    const requestOtpForm = document.getElementById('requestOtpForm');
+    const verifyOtpForm = document.getElementById('verifyOtpForm');
+    const newPasswordForm = document.getElementById('newPasswordForm');
 
     if (loginForm) loginForm.addEventListener('submit', handleLogin);
     if (registerForm) registerForm.addEventListener('submit', handleRegister);
+    
+    // *Important:* Since we added event listeners here, make sure to REMOVE the inline 
+    // `onsubmit="event.preventDefault(); goToStep(x);"` from your HTML form tags!
+    if (requestOtpForm) {
+        requestOtpForm.onsubmit = null; // Clear inline placeholder
+        requestOtpForm.addEventListener('submit', handleRequestOtp);
+    }
+    
+    if (verifyOtpForm) {
+        verifyOtpForm.onsubmit = null; // Clear inline placeholder
+        verifyOtpForm.addEventListener('submit', handleVerifyOtp);
+    }
+    
+    if (newPasswordForm) {
+        newPasswordForm.onsubmit = null; // Clear inline placeholder
+        newPasswordForm.addEventListener('submit', handleUpdatePassword);
+    }
 });
