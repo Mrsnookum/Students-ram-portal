@@ -228,6 +228,10 @@ async function saveWhatsApp() {
     
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     btn.disabled = true;
+
+    // Add abort controller to prevent mobile network hangs
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 75000); // 75 seconds to outlast Render's wake up
     
     try {
         const response = await fetch(`${FASTAPI_URL}/api/link-whatsapp`, {
@@ -236,16 +240,26 @@ async function saveWhatsApp() {
             body: JSON.stringify({ 
                 admission_number: currentStudent.admission_number,
                 phone_number: phone
-            })
+            }),
+            signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
+
         if (!response.ok) throw new Error("Failed to link WhatsApp");
         
         showToast("WhatsApp successfully linked!", "success");
         setTimeout(() => location.reload(), 1500);
     } catch (e) {
+        clearTimeout(timeoutId);
         console.error(e);
-        showToast("Error saving WhatsApp number.", "error");
+        
+        if (e.name === 'AbortError') {
+            showToast("Connection timed out waiting for server.", "error");
+        } else {
+            showToast("Error saving WhatsApp number.", "error");
+        }
+        
         btn.innerHTML = '<i class="fas fa-save"></i> Save';
         btn.disabled = false;
     }
