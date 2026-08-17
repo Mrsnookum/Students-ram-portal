@@ -4,7 +4,7 @@ const SUPABASE_URL = 'https://atkcgxthfgpadgxgqeaj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0a2NneHRoZmdwYWRneGdxZWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMDIzNjIsImV4cCI6MjA5Nzc3ODM2Mn0.ivC1B2QLjDGmyi_Glr8fnhGaZerLe2V1dHRfrVaZ1zc';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const FASTAPI_URL = 'https://ram-whatsapp-engine.onrender.com/'; // Backend URL for Notification APIs
+const FASTAPI_URL = 'https://ram-portal-backend.onrender.com'; // Backend URL for Notification APIs
 
 let currentUser = null;
 let currentStudent = null;
