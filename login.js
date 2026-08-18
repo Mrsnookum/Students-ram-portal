@@ -234,7 +234,7 @@ let resetState = {
 };
 
 // URL for the Python Backend (Update this when deploying to Render/Railway)
-const FASTAPI_URL = 'http://127.0.0.1:8000';
+const FASTAPI_URL = 'https://ram-portal-backend.onrender.com';
 
 async function handleRequestOtp(event) {
     event.preventDefault();
