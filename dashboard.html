@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module" src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"></script>
+    <link rel="icon" type="image/jpeg" href="/logoram.jpg">
     
     <script>
         tailwind.config = {
@@ -83,6 +84,15 @@
                 <div class="flex items-center"><i class="fas fa-bell w-6"></i><span>Get Notifications</span></div>
                 <span class="h-2 w-2 bg-ramGold rounded-full animate-pulse"></span>
             </button>
+            <a href="buy-sell.html" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100 mt-1">
+                <i class="fas fa-tags w-6"></i><span>Buy & Sell</span>
+            </a>
+            <a href="#" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100 mt-1">
+                <i class="fas fa-utensils w-6"></i><span>Order Food</span>
+            </a>
+            <a href="#" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100 mt-1">
+                <i class="fas fa-jug-detergent w-6"></i><span>Get Mama Fua</span>
+            </a>
             
             <div class="border-t border-blue-700/50 my-6 mx-4"></div>
 
@@ -357,21 +367,21 @@
                         </button>
                     </div>
 
-                    <!-- WhatsApp Link Row -->
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border border-gray-200 rounded-xl bg-gray-50 gap-4">
+                    <!-- WhatsApp Link Row (Disabled) -->
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border border-gray-200 rounded-xl bg-gray-100 gap-4 opacity-75">
                         <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 rounded-full bg-green-100 text-green-500 flex items-center justify-center text-2xl shrink-0">
+                            <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-2xl shrink-0">
                                 <i class="fab fa-whatsapp"></i>
                             </div>
                             <div class="text-left">
-                                <h4 class="font-bold text-gray-800">WhatsApp Direct</h4>
-                                <p class="text-xs text-gray-500 mt-1">For urgent grades, login links, and direct chat @mentions.</p>
+                                <h4 class="font-bold text-gray-500">WhatsApp Direct</h4>
+                                <p class="text-xs text-red-500 mt-1">⚠️ Temporarily unavailable. Please use Telegram for notifications.</p>
                             </div>
                         </div>
                         <div id="whatsappInputContainer" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-                            <input type="text" id="waPhoneInput" placeholder="e.g. 0712345678" class="w-full sm:w-40 px-4 py-3 border border-gray-300 rounded-xl text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
-                            <button id="btnLinkWhatsapp" onclick="saveWhatsApp()" class="w-full sm:w-auto px-6 py-3 bg-green-500 text-white text-sm font-bold rounded-xl shadow-md hover:bg-green-600 transition flex items-center justify-center gap-2">
-                                <i class="fas fa-save"></i> Save
+                            <input type="text" id="waPhoneInput" placeholder="Unavailable" disabled class="w-full sm:w-40 px-4 py-3 border border-gray-300 rounded-xl text-sm outline-none bg-gray-200 cursor-not-allowed">
+                            <button id="btnLinkWhatsapp" disabled class="w-full sm:w-auto px-6 py-3 bg-gray-400 text-white text-sm font-bold rounded-xl shadow-md cursor-not-allowed flex items-center justify-center gap-2">
+                                <i class="fas fa-lock"></i> Locked
                             </button>
                         </div>
                     </div>
@@ -414,9 +424,18 @@
         </div>
     </div>
 
-    
-
     <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[400px] z-[150] hidden transition-all duration-300 pointer-events-none"></div>
+
+    <!-- DYNAMIC CAMPUS LIFE TOAST -->
+    <div id="campus-toast" class="fixed bottom-6 right-6 bg-white rounded-xl shadow-2xl border-l-4 border-blue-500 p-4 w-80 transform translate-x-full transition-transform duration-500 z-[150] flex items-start gap-3">
+        <div id="toast-icon" class="text-2xl mt-1"></div>
+        <div class="flex-1">
+            <h4 id="toast-title" class="text-sm font-bold text-gray-800"></h4>
+            <p id="toast-message" class="text-xs text-gray-500 mt-1"></p>
+            <a id="toast-link" href="#" class="inline-block mt-2 text-xs font-bold text-ramBlue hover:underline">Check it out &rarr;</a>
+        </div>
+        <button onclick="closeToast()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-xmark"></i></button>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="dashboard.js"></script>
@@ -471,6 +490,53 @@
                     showSection('notifications');
                 }
             }, 300);
+        }
+
+        // --- Time-Aware Toast Notification Logic ---
+        document.addEventListener("DOMContentLoaded", () => {
+            setTimeout(showCampusToast, 2000); // Wait 2 seconds after dashboard loads
+        });
+
+        function showCampusToast() {
+            const hour = new Date().getHours();
+            const toast = document.getElementById('campus-toast');
+            const icon = document.getElementById('toast-icon');
+            const title = document.getElementById('toast-title');
+            const message = document.getElementById('toast-message');
+            const link = document.getElementById('toast-link');
+
+            if (!toast) return;
+
+            if (hour >= 6 && hour < 11) {
+                // Morning Logic (Mama Fua focus)
+                icon.innerHTML = '🧺';
+                title.innerText = 'Morning! Clinicals tomorrow?';
+                message.innerText = 'Book a Mama Fua now to get your scrubs washed before 7 PM.';
+                link.href = 'mama-fua.html';
+            } else if (hour >= 11 && hour < 19) {
+                // Daytime Logic (Food focus)
+                icon.innerHTML = '🍔';
+                title.innerText = 'Hungry?';
+                message.innerText = 'Order lunch or a snack straight to the campus gate right now.';
+                link.href = 'order-food.html';
+            } else {
+                // Night Logic (Pre-order / Buy & Sell focus)
+                icon.innerHTML = '🌙';
+                title.innerText = 'Vendors are resting!';
+                message.innerText = 'Pre-order tomorrow\'s lunch now or check out the latest deals on Buy & Sell.';
+                link.href = 'buy-sell.html';
+            }
+
+            // Slide it in
+            toast.classList.remove('translate-x-full');
+
+            // Auto-hide after 10 seconds
+            setTimeout(closeToast, 10000);
+        }
+
+        function closeToast() {
+            const toast = document.getElementById('campus-toast');
+            if (toast) toast.classList.add('translate-x-full');
         }
     </script>
 </body>
