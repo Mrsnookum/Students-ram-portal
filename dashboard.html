@@ -26,7 +26,6 @@
         }
     </script>
     <style>
-        /* Modern Mobile Scroll Fixes */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { 
             -ms-overflow-style: none; 
@@ -77,22 +76,10 @@
             <button onclick="showSection('support')" id="nav-support" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100">
                 <i class="fas fa-headset w-6"></i><span>Help/Issues</span>
             </button>
-
-            <!-- NEW: Campus Life Menu -->
-            <div class="px-4 mt-8 mb-2 text-[10px] font-black text-blue-400 uppercase tracking-widest">Campus Life</div>
-            <button onclick="showSection('notifications')" id="nav-notifications" class="nav-btn w-full flex items-center justify-between px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100">
+            <button onclick="showSection('notifications')" id="nav-notifications" class="nav-btn w-full flex items-center justify-between px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100 mt-1">
                 <div class="flex items-center"><i class="fas fa-bell w-6"></i><span>Get Notifications</span></div>
                 <span class="h-2 w-2 bg-ramGold rounded-full animate-pulse"></span>
             </button>
-            <a href="buy-sell.html" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100 mt-1">
-                <i class="fas fa-tags w-6"></i><span>Buy & Sell</span>
-            </a>
-            <a href="#" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100 mt-1">
-                <i class="fas fa-utensils w-6"></i><span>Order Food</span>
-            </a>
-            <a href="#" class="nav-btn w-full flex items-center px-4 py-3 hover:bg-blue-700/50 rounded-xl transition-all text-blue-100 mt-1">
-                <i class="fas fa-jug-detergent w-6"></i><span>Get Mama Fua</span>
-            </a>
             
             <div class="border-t border-blue-700/50 my-6 mx-4"></div>
 
@@ -322,7 +309,7 @@
                 </div>
             </div>
 
-            <!-- NEW: Get Notifications Setup Section -->
+            <!-- Notifications Setup Section (WhatsApp greyed out, Telegram active) -->
             <div id="section-notifications" class="hidden space-y-6 max-w-4xl mx-auto">
                 <div class="text-center mb-8">
                     <div class="w-16 h-16 rounded-full bg-blue-50 text-ramBlue flex items-center justify-center text-3xl mx-auto mb-4">
@@ -332,7 +319,6 @@
                     <p class="text-sm text-gray-600 mt-2">Securely link your channels to receive critical exam updates, login codes, and portal announcements.</p>
                 </div>
 
-                <!-- Status Tracker -->
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div id="tg-status-card" class="p-4 bg-white rounded-2xl shadow-sm border border-red-100 flex items-center gap-3 transition-colors">
                         <i class="fab fa-telegram text-2xl text-gray-300" id="tg-status-icon"></i>
@@ -351,7 +337,6 @@
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-6">
-                    <!-- Telegram Link Row -->
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border border-gray-200 rounded-xl bg-gray-50 gap-4">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center text-2xl shrink-0">
@@ -367,7 +352,6 @@
                         </button>
                     </div>
 
-                    <!-- WhatsApp Link Row (Disabled) -->
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border border-gray-200 rounded-xl bg-gray-100 gap-4 opacity-75">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-2xl shrink-0">
@@ -395,7 +379,6 @@
         </div>
     </main>
 
-    <!-- Existing Modals -->
     <div id="customModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4 overflow-hidden">
         <div class="absolute inset-0 bg-ramBlue/40 backdrop-blur-md opacity-0 transition-opacity duration-300" id="modalBackdrop"></div>
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 transform scale-90 opacity-0 transition-all duration-300" id="modalBox">
@@ -426,17 +409,6 @@
 
     <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[400px] z-[150] hidden transition-all duration-300 pointer-events-none"></div>
 
-    <!-- DYNAMIC CAMPUS LIFE TOAST -->
-    <div id="campus-toast" class="fixed bottom-6 right-6 bg-white rounded-xl shadow-2xl border-l-4 border-blue-500 p-4 w-80 transform translate-x-full transition-transform duration-500 z-[150] flex items-start gap-3">
-        <div id="toast-icon" class="text-2xl mt-1"></div>
-        <div class="flex-1">
-            <h4 id="toast-title" class="text-sm font-bold text-gray-800"></h4>
-            <p id="toast-message" class="text-xs text-gray-500 mt-1"></p>
-            <a id="toast-link" href="#" class="inline-block mt-2 text-xs font-bold text-ramBlue hover:underline">Check it out &rarr;</a>
-        </div>
-        <button onclick="closeToast()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-xmark"></i></button>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="dashboard.js"></script>
     <script>
@@ -450,93 +422,6 @@
                 drawer.classList.remove('drawer-open');
                 overlay.classList.add('hidden');
             }
-        }
-
-        // --- Coming Soon Modal Logic ---
-        function showComingSoonModal(title, desc, iconClass) {
-            document.getElementById('soonModalTitle').innerText = title;
-            document.getElementById('soonModalDesc').innerText = desc;
-            document.getElementById('soonModalIcon').className = 'fas ' + iconClass;
-            
-            const modal = document.getElementById('comingSoonModal');
-            const backdrop = document.getElementById('soonModalBackdrop');
-            const box = document.getElementById('soonModalBox');
-            
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                backdrop.classList.replace('opacity-0', 'opacity-100');
-                box.classList.replace('scale-90', 'scale-100');
-                box.classList.replace('opacity-0', 'opacity-100');
-            }, 10);
-        }
-
-        function closeComingSoonModal() {
-            const backdrop = document.getElementById('soonModalBackdrop');
-            const box = document.getElementById('soonModalBox');
-            
-            backdrop.classList.replace('opacity-100', 'opacity-0');
-            box.classList.replace('scale-100', 'scale-90');
-            box.classList.replace('opacity-100', 'opacity-0');
-            
-            setTimeout(() => {
-                document.getElementById('comingSoonModal').classList.add('hidden');
-            }, 300);
-        }
-
-        function redirectToNotifications() {
-            closeComingSoonModal();
-            setTimeout(() => {
-                if(typeof showSection === 'function') {
-                    showSection('notifications');
-                }
-            }, 300);
-        }
-
-        // --- Time-Aware Toast Notification Logic ---
-        document.addEventListener("DOMContentLoaded", () => {
-            setTimeout(showCampusToast, 2000); // Wait 2 seconds after dashboard loads
-        });
-
-        function showCampusToast() {
-            const hour = new Date().getHours();
-            const toast = document.getElementById('campus-toast');
-            const icon = document.getElementById('toast-icon');
-            const title = document.getElementById('toast-title');
-            const message = document.getElementById('toast-message');
-            const link = document.getElementById('toast-link');
-
-            if (!toast) return;
-
-            if (hour >= 6 && hour < 11) {
-                // Morning Logic (Mama Fua focus)
-                icon.innerHTML = '🧺';
-                title.innerText = 'Morning! Clinicals tomorrow?';
-                message.innerText = 'Book a Mama Fua now to get your scrubs washed before 7 PM.';
-                link.href = '#';
-            } else if (hour >= 11 && hour < 19) {
-                // Daytime Logic (Food focus)
-                icon.innerHTML = '🍔';
-                title.innerText = 'Hungry?';
-                message.innerText = 'Order lunch or a snack straight to the campus gate right now.';
-                link.href = '#';
-            } else {
-                // Night Logic (Pre-order / Buy & Sell focus)
-                icon.innerHTML = '🌙';
-                title.innerText = 'Vendors are resting!';
-                message.innerText = 'Pre-order tomorrow\'s lunch now or check out the latest deals on Buy & Sell.';
-                link.href = 'buy-sell.html';
-            }
-
-            // Slide it in
-            toast.classList.remove('translate-x-full');
-
-            // Auto-hide after 10 seconds
-            setTimeout(closeToast, 10000);
-        }
-
-        function closeToast() {
-            const toast = document.getElementById('campus-toast');
-            if (toast) toast.classList.add('translate-x-full');
         }
     </script>
 </body>
